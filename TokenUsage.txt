@@ -1,2 +1,4 @@
-session,label,duration_minutes,tokens
-First Draft,01 — Die Idee,161,3421
+session,label,ai provider,duration_minutes,tokens
+Ideation, 00-Die Ideee, Gemini Chat, 164, 18000
+First Prototype,02 — Erster Prototyp, Claude Code, 161,3421
+3D Prototype, 03 - 3D Szene, Claude Code, 92, 48000

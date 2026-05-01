@@ -4,6 +4,7 @@ import path from 'path';
 export type LayerData = {
   session: string;
   label: string;
+  aiProvider: string;
   durationMinutes: number;
   tokens: number;
 };
@@ -17,12 +18,13 @@ export function parseTokenUsage(): LayerData[] {
     .map((line) => line.trim())
     .filter(Boolean)
     .map((line) => {
-      const [session, label, durationMinutes, tokens] = line.split(',');
+      const parts = line.split(',').map((p) => p.trim());
       return {
-        session: session.trim(),
-        label: label.trim(),
-        durationMinutes: parseInt(durationMinutes.trim(), 10),
-        tokens: parseInt(tokens.trim(), 10),
+        session:         parts[0],
+        label:           parts[1],
+        aiProvider:      parts[2],
+        durationMinutes: parseInt(parts[3], 10),
+        tokens:          parseInt(parts[4], 10),
       };
     });
 }
