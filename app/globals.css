@@ -1,0 +1,22 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+}
+
+@layer components {
+  .engineering-layer {
+    background-image: radial-gradient(circle, #c8c4b5 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+}
