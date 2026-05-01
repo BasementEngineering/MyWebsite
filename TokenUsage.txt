@@ -1,3 +1,2 @@
-Token Usage
-Duration
-First Draft: 
+session,label,duration_minutes,tokens
+First Draft,01 — Die Idee,161,3421
