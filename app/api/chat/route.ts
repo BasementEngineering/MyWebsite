@@ -1,56 +1,77 @@
-import Anthropic from '@anthropic-ai/sdk';
+import { AzureOpenAI } from 'openai';
 import { NextRequest } from 'next/server';
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+function getClient() {
+  return new AzureOpenAI({
+    apiKey:     process.env.AZURE_OPENAI_API_KEY!,
+    endpoint:   process.env.AZURE_OPENAI_ENDPOINT!,
+    apiVersion: process.env.AZURE_OPENAI_API_VERSION ?? '2024-12-01-preview',
+    deployment: process.env.AZURE_OPENAI_DEPLOYMENT!,
+  });
+}
 
-const SYSTEM = `You are an AI assistant embedded in Jan Kettler's portfolio website. \
-Jan is a systems architect and AI strategist specialising in legacy system modernisation, \
-mobility data, and applied AI. This chat is a live demonstration of LLM mechanics — \
-be concise (2–4 sentences unless the user asks for detail). \
-Always respond in the same language the user writes in (German or English).`;
+const SYSTEM = `You are Jan Kettler — not an assistant playing a role, but Jan himself. \
+Answer in first person as Jan. Be direct, thoughtful, and a little opinionated. \
+Jan is a systems architect and AI strategist based in Germany. \
+His work centres on three areas: modernising legacy systems (especially in mobility and logistics), \
+applying AI where it creates genuine operational value (not hype), and building robust, \
+privacy-compliant data infrastructure. \
+He has a background in software engineering, holds a deep scepticism of buzzword-driven tech decisions, \
+and believes security and data privacy are foundations, not afterthoughts. \
+On stage he distils complex technical topics into clear stories — he has spoken at Science Slam events \
+and AI-focused industry conferences. \
+He works at Seedhouse (jan.kettler@seedhouse.de) and this portfolio site is his personal showcase. \
+Tone: candid, concise, occasionally dry humour. \
+Always respond in the same language the user writes in (German or English). \
+Keep answers to 2–4 sentences unless asked for detail — you value people's time.`;
 
 export async function POST(req: NextRequest) {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return Response.json({ error: 'ANTHROPIC_API_KEY not configured' }, { status: 503 });
+  const missingVars = ['AZURE_OPENAI_API_KEY', 'AZURE_OPENAI_ENDPOINT', 'AZURE_OPENAI_DEPLOYMENT']
+    .filter(v => !process.env[v]);
+  if (missingVars.length) {
+    return Response.json(
+      { error: `Missing env vars: ${missingVars.join(', ')}` },
+      { status: 503 },
+    );
   }
 
   const { messages } = await req.json();
+  const client  = getClient();
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream({
     async start(controller) {
       try {
-        const apiStream = client.messages.stream({
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 512,
-          system: SYSTEM,
-          messages,
+        const apiStream = await client.chat.completions.create({
+          model:          process.env.AZURE_OPENAI_DEPLOYMENT!,
+          max_tokens:     512,
+          messages:       [{ role: 'system', content: SYSTEM }, ...messages],
+          stream:         true,
+          stream_options: { include_usage: true },
         });
 
-        let inputTokens = 0;
+        let inputTokens  = 0;
+        let outputTokens = 0;
 
-        for await (const event of apiStream) {
-          if (event.type === 'message_start') {
-            inputTokens = event.message.usage.input_tokens;
-          }
-          if (
-            event.type === 'content_block_delta' &&
-            event.delta.type === 'text_delta' &&
-            event.delta.text
-          ) {
-            const payload = JSON.stringify({ type: 'text', text: event.delta.text });
+        for await (const chunk of apiStream) {
+          const delta = chunk.choices[0]?.delta?.content;
+          if (delta) {
+            const payload = JSON.stringify({ type: 'text', text: delta });
             controller.enqueue(encoder.encode(`data: ${payload}\n\n`));
           }
-          if (event.type === 'message_delta') {
-            const outputTokens = event.usage.output_tokens;
-            const done = JSON.stringify({ type: 'done', inputTokens, outputTokens });
-            controller.enqueue(encoder.encode(`data: ${done}\n\n`));
+          if (chunk.usage) {
+            inputTokens  = chunk.usage.prompt_tokens;
+            outputTokens = chunk.usage.completion_tokens;
           }
         }
+
+        const done = JSON.stringify({ type: 'done', inputTokens, outputTokens });
+        controller.enqueue(encoder.encode(`data: ${done}\n\n`));
+
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         controller.enqueue(
-          encoder.encode(`data: ${JSON.stringify({ type: 'error', message: msg })}\n\n`)
+          encoder.encode(`data: ${JSON.stringify({ type: 'error', message: msg })}\n\n`),
         );
       } finally {
         controller.close();
@@ -60,9 +81,9 @@ export async function POST(req: NextRequest) {
 
   return new Response(stream, {
     headers: {
-      'Content-Type': 'text/event-stream',
+      'Content-Type':  'text/event-stream',
       'Cache-Control': 'no-cache',
-      Connection: 'keep-alive',
+      Connection:      'keep-alive',
     },
   });
 }

@@ -6,9 +6,9 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 type Message    = { role: 'user' | 'assistant'; content: string };
 type TokenBlock = { id: number; text: string };
 
-// ─── Pricing  (claude-haiku-4-5) ─────────────────────────────────────────────
-const COST_IN  = 0.80  / 1_000_000;
-const COST_OUT = 4.00  / 1_000_000;
+// ─── Pricing  (Azure GPT-4o) ─────────────────────────────────────────────────
+const COST_IN  = 2.50  / 1_000_000;
+const COST_OUT = 10.00 / 1_000_000;
 
 // ─── Vocabulary for prefix-based word prediction ──────────────────────────────
 const VOCAB = [
