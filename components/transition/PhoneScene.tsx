@@ -2,7 +2,7 @@
 
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Html, RoundedBox, Line } from '@react-three/drei';
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import { type MotionValue, useMotionValueEvent } from 'framer-motion';
 import { type LayerData } from '@/lib/parseTokenUsage';
@@ -29,20 +29,26 @@ const PANEL_SCREENSHOTS: (string | null)[] = [
   '/images/phone-screenshot.jpg',
 ];
 
-// Deployment stack (right side)
+// Deployment cube (right side)
 const STACK_FINAL_X = 2.7;
-const STACK_W       = 1.4;
-const STACK_H       = 0.28;
-const STACK_D       = 0.75;
-const STACK_GAP     = 0.33;  // center-to-center Y between layers
-const STACK_ISO     = 0.04;  // XZ isometric offset per layer (top-most = most offset)
+const CUBE_W        = 1.4;
+const CUBE_H        = 1.2;
+const CUBE_D        = 0.9;
+// Layer slabs inside the cube
+const LAYER_W       = 1.1;
+const LAYER_H       = 0.20;
+const LAYER_D       = 0.7;
+const layerY        = (i: number) => 0.32 - i * 0.32;  // 0.32, 0, -0.32 (tighter spacing)
 
+// Cube = Linux VPS. Layers from top to bottom: Node JS → Docker → Coolify.
 const DEPLOY_LAYERS = [
-  { label: 'Node JS',    color: '#f2c840' },
-  { label: 'Coolify',    color: '#e09838' },
-  { label: 'Docker',     color: '#c85c20' },
-  { label: 'Strato VPS', color: '#c8aa78' },
+  { label: 'Node JS', color: '#a8b888' },  // muted sage green
+  { label: 'Docker',  color: '#8898b8' },  // muted slate blue
+  { label: 'Coolify', color: '#c49870' },  // warm sand — bottom layer
 ] as const;
+// Deployment session stats shown below the cube
+const DEPLOY_MINUTES = 268;   // 4 h 28 m — update as needed
+const DEPLOY_TOKENS  = 34000;
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
 const clamp    = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
@@ -233,76 +239,192 @@ function PhasePanel({
   );
 }
 
-// ─── Deployment stack (flies right) ───────────────────────────────────────────
+// ─── Deployment cube (flies right) ────────────────────────────────────────────
 function DeploymentStack({ scrollRef }: { scrollRef: React.MutableRefObject<number> }) {
-  const groupRef  = useRef<THREE.Group>(null);
-  const titleRef  = useRef<HTMLDivElement>(null);
-  const labelsRef = useRef<(HTMLDivElement | null)[]>([]);
+  const groupRef         = useRef<THREE.Group>(null);
+  const cubeMatRef       = useRef<THREE.MeshStandardMaterial>(null);
+  const edgesMatRef      = useRef<THREE.LineBasicMaterial>(null);
+  const slabMatRefs      = useRef<(THREE.MeshStandardMaterial | null)[]>([]);
+  const lineGroupRefs    = useRef<(THREE.Group | null)[]>([]);
+  const calloutLineRef   = useRef<THREE.Group>(null);
+  const titleRef         = useRef<HTMLDivElement>(null);
+  const vpsLabelRef      = useRef<HTMLDivElement>(null);
+  const belowRef         = useRef<HTMLDivElement>(null);
+  const labelsRef        = useRef<(HTMLDivElement | null)[]>([]);
+  const triggered        = useRef(false);
+  const [countActive, setCountActive] = useState(false);
 
-  const TOTAL_H = (DEPLOY_LAYERS.length - 1) * STACK_GAP;
+  const edgesGeo = useMemo(
+    () => new THREE.EdgesGeometry(new THREE.BoxGeometry(CUBE_W, CUBE_H, CUBE_D)),
+    []
+  );
+
+  // Stack starts after all panels have left. Layers appear bottom → top.
+  // index 0 = Node JS (top), index 2 = Docker (bottom) → Docker pops first.
+  const LAYER_IN  = [0.86, 0.82, 0.78] as const; // [NodeJS, Coolify, Docker]
+  const LAYER_OUT = [0.92, 0.88, 0.84] as const;
 
   useFrame(() => {
     if (!groupRef.current) return;
-    const t = easeOut3(t01(scrollRef.current, 0.44, 0.88));
+    const s = scrollRef.current;
+
+    // Group slides into position after panels (0.62 → 0.82)
+    const t    = easeOut3(t01(s, 0.62, 0.82));
+    const rotT = easeInOut(t01(s, INTRO_START, INTRO_END));
     groupRef.current.position.x = lerp(0, STACK_FINAL_X, t);
-    const op = String(clamp(t01(t, 0.25, 0.65), 0, 1));
-    if (titleRef.current) titleRef.current.style.opacity = op;
-    labelsRef.current.forEach(el => { if (el) el.style.opacity = op; });
+    groupRef.current.rotation.y = lerp(0, PHONE_ROT_Y, rotT);
+    groupRef.current.rotation.x = PHONE_ROT_X;
+
+    // Cube + edges + VPS callout fade in once group arrives
+    const cubeT = clamp(t01(s, 0.72, 0.80), 0, 1);
+    if (cubeMatRef.current)     cubeMatRef.current.opacity  = lerp(0, 0.07, cubeT);
+    if (edgesMatRef.current)    edgesMatRef.current.opacity = lerp(0, 0.5,  cubeT);
+    if (calloutLineRef.current) calloutLineRef.current.visible = cubeT > 0;
+    if (titleRef.current)       titleRef.current.style.opacity    = String(cubeT);
+    if (vpsLabelRef.current)    vpsLabelRef.current.style.opacity = String(cubeT);
+
+    // Layers stagger in bottom → top (Docker first, Node JS last)
+    DEPLOY_LAYERS.forEach((_, i) => {
+      const lt = clamp(t01(s, LAYER_IN[i], LAYER_OUT[i]), 0, 1);
+      const mat = slabMatRefs.current[i];
+      if (mat) mat.opacity = lt;
+      const lineGrp = lineGroupRefs.current[i];
+      if (lineGrp) lineGrp.visible = lt > 0;
+      const lbl = labelsRef.current[i];
+      if (lbl) lbl.style.opacity = String(lt);
+    });
+
+    // Stats below follow the last layer (Node JS)
+    const lastT = clamp(t01(s, LAYER_IN[0], LAYER_OUT[0]), 0, 1);
+    if (belowRef.current) belowRef.current.style.opacity = String(lastT);
+
+    if (s > LAYER_IN[2] && !triggered.current) { triggered.current = true; setCountActive(true); }
   });
 
+  const deployMinutes = useCountUp(DEPLOY_MINUTES, 3.0, countActive);
+  const deployTokens  = useCountUp(DEPLOY_TOKENS,  3.0, countActive);
+  const hh = Math.floor(deployMinutes / 60);
+  const mm = String(deployMinutes % 60).padStart(2, '0');
+
   return (
-    <group ref={groupRef} position={[0, -0.1, 0]}>
-      {/* "Deployment" title above stack */}
-      <group position={[0, TOTAL_H / 2 + 0.24, 0]}>
+    <group ref={groupRef}>
+      {/* Title above */}
+      <group position={[0, CUBE_H / 2 + 0.18, 0]}>
         <Html center style={{ pointerEvents: 'none' }}>
           <div ref={titleRef} style={{
             opacity: 0,
             whiteSpace: 'nowrap',
             fontFamily: 'var(--font-jetbrains-mono, "JetBrains Mono", monospace)',
-            fontSize: 11,
-            fontWeight: 600,
-            color: '#1a1a1a',
-            letterSpacing: '0.03em',
+            fontSize: 11, fontWeight: 600, color: '#1a1a1a', letterSpacing: '0.03em',
           }}>
             Deployment
           </div>
         </Html>
       </group>
 
-      {/* Stacked boxes: index 0 = Node JS (top), index 3 = Strato VPS (bottom) */}
-      {DEPLOY_LAYERS.map((layer, i) => {
-        const fromBottom = DEPLOY_LAYERS.length - 1 - i;  // 3,2,1,0
-        const y    = fromBottom * STACK_GAP - TOTAL_H / 2;
-        const xOff = fromBottom * STACK_ISO;
-        const zOff = -fromBottom * STACK_ISO;
-        return (
-          <group key={layer.label} position={[xOff, y, zOff]}>
-            <mesh>
-              <boxGeometry args={[STACK_W, STACK_H, STACK_D]} />
-              <meshStandardMaterial color={layer.color} roughness={0.45} metalness={0.1} />
-            </mesh>
-            {/* Label to the right of each box */}
-            <group position={[STACK_W / 2 + 0.12, 0, 0]}>
-              <Html style={{ pointerEvents: 'none' }}>
-                <div
-                  ref={el => { labelsRef.current[i] = el; }}
-                  style={{
-                    opacity: 0,
-                    whiteSpace: 'nowrap',
-                    fontFamily: 'var(--font-jetbrains-mono, "JetBrains Mono", monospace)',
-                    fontSize: 11,
-                    fontWeight: 600,
-                    color: '#1a1a1a',
-                    transform: 'translateY(-50%)',
-                  }}
-                >
-                  {layer.label}
-                </div>
-              </Html>
-            </group>
+      {/* Translucent cube faces */}
+      <mesh renderOrder={2}>
+        <boxGeometry args={[CUBE_W, CUBE_H, CUBE_D]} />
+        <meshStandardMaterial
+          ref={cubeMatRef}
+          color="#c8d4ff"
+          transparent
+          opacity={0}
+          side={THREE.DoubleSide}
+          depthWrite={false}
+        />
+      </mesh>
+
+      {/* Cube wireframe edges */}
+      <lineSegments geometry={edgesGeo} renderOrder={3}>
+        <lineBasicMaterial ref={edgesMatRef} color="#8899cc" transparent opacity={0} />
+      </lineSegments>
+
+      {/* "Linux VPS" callout — line from bottom-right corner to label */}
+      <group ref={calloutLineRef} visible={false}>
+        <Line
+          points={[
+            [CUBE_W / 2, -CUBE_H / 2, 0],
+            [CUBE_W / 2 + 0.45, -CUBE_H / 2 - 0.35, 0],
+          ]}
+          color="#888888"
+          lineWidth={1}
+        />
+        <group position={[CUBE_W / 2 + 0.48, -CUBE_H / 2 - 0.35, 0]}>
+          <Html style={{ pointerEvents: 'none' }}>
+            <div ref={vpsLabelRef} style={{
+              opacity: 0,
+              whiteSpace: 'nowrap',
+              fontFamily: 'var(--font-jetbrains-mono, "JetBrains Mono", monospace)',
+              fontSize: 11, fontWeight: 600, color: '#1a1a1a',
+              transform: 'translateY(-50%)',
+            }}>
+              Linux VPS
+            </div>
+          </Html>
+        </group>
+      </group>
+
+      {/* Layer slabs — stagger in after cube */}
+      {DEPLOY_LAYERS.map((layer, i) => (
+        <group key={layer.label} position={[0, layerY(i), 0]}>
+          <mesh renderOrder={1}>
+            <boxGeometry args={[LAYER_W, LAYER_H, LAYER_D]} />
+            <meshStandardMaterial
+              ref={el => { slabMatRefs.current[i] = el; }}
+              color={layer.color}
+              transparent
+              opacity={0}
+              roughness={0.4}
+              metalness={0.1}
+            />
+          </mesh>
+
+          {/* Connecting line (hidden until slab appears) */}
+          <group ref={el => { lineGroupRefs.current[i] = el; }} visible={false}>
+            <Line
+              points={[[LAYER_W / 2, 0, 0], [CUBE_W / 2 + 0.12, 0, 0]]}
+              color="#888888"
+              lineWidth={1}
+            />
           </group>
-        );
-      })}
+
+          {/* Label outside cube */}
+          <group position={[CUBE_W / 2 + 0.15, 0, 0]}>
+            <Html style={{ pointerEvents: 'none' }}>
+              <div
+                ref={el => { labelsRef.current[i] = el; }}
+                style={{
+                  opacity: 0,
+                  whiteSpace: 'nowrap',
+                  fontFamily: 'var(--font-jetbrains-mono, "JetBrains Mono", monospace)',
+                  fontSize: 11, fontWeight: 600, color: '#1a1a1a',
+                  transform: 'translateY(-50%)',
+                }}
+              >
+                {layer.label}
+              </div>
+            </Html>
+          </group>
+        </group>
+      ))}
+
+      {/* Time + tokens below cube */}
+      <group position={[0, -CUBE_H / 2 - 0.25, 0]}>
+        <Html center style={{ pointerEvents: 'none' }}>
+          <div ref={belowRef} style={{
+            opacity: 0,
+            textAlign: 'center',
+            whiteSpace: 'nowrap',
+            fontFamily: 'var(--font-jetbrains-mono, "JetBrains Mono", monospace)',
+            color: 'rgba(0,0,0,0.5)',
+            lineHeight: 1.6,
+          }}>
+            <div style={{ fontSize: 11 }}>{hh}:{mm} h</div>
+            <div style={{ fontSize: 11 }}>{deployTokens.toLocaleString('de-DE')} Tokens</div>
+          </div>
+        </Html>
+      </group>
     </group>
   );
 }
@@ -317,7 +439,7 @@ function ConnectorLine({ scrollRef }: { scrollRef: React.MutableRefObject<number
   return (
     <group ref={groupRef}>
       <Line
-        points={[[0.48, -0.1, 0], [STACK_FINAL_X - STACK_W / 2 - 0.12, -0.1, 0]]}
+        points={[[0.48, -0.1, 0], [STACK_FINAL_X - CUBE_W / 2 - 0.12, -0.1, 0]]}
         color="#aaaaaa"
         lineWidth={1.5}
         dashed
