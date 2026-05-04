@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import { content } from '@/lib/content';
 import LiveDataWidget from './LiveDataWidget';
+import TransparentArchitectChat from './TransparentArchitectChat';
 
 export default function EngineeringSection() {
   return (
@@ -67,6 +68,20 @@ export default function EngineeringSection() {
             </motion.div>
           ))}
         </div>
+
+        {/* Transparent Architect Chat */}
+        <motion.div
+          className="mt-16"
+          initial={{ opacity: 0, y: 10 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-40px' }}
+          transition={{ duration: 0.6 }}
+        >
+          <p className="font-mono text-[10px] tracking-[0.28em] uppercase text-black/25 mb-4">
+            // Transparent Architect Chat
+          </p>
+          <TransparentArchitectChat />
+        </motion.div>
 
         {/* Footer line */}
         <motion.div
