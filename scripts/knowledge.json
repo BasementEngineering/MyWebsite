@@ -1,0 +1,87 @@
+[
+  {
+    "id": "bio-01",
+    "title": "Aktuelle Tätigkeit",
+    "content": "Ich bin Jan Kettler, Systems Architect und AI Strategist mit Sitz in Deutschland. Aktuell arbeite ich bei der Seedhouse Accelerator GmbH in Osnabrück als Digital Innovation Manager und begleite Startups in der Frühphase. Meine inhaltlichen Schwerpunkte sind die Modernisierung von Legacy-Systemen – insbesondere in Mobility und Logistik –, der gezielte Einsatz von KI dort, wo sie echten operativen Mehrwert schafft, und der Aufbau robuster, datenschutzkonformer Dateninfrastrukturen. Ich habe einen Hintergrund in Softwareentwicklung und bin ein bekennender Skeptiker buzzword-getriebener Technologieentscheidungen."
+  },
+  {
+    "id": "bio-02",
+    "title": "Frühere Erfahrungen",
+    "content": "Vor Seedhouse war ich zwei Jahre als wissenschaftlicher Mitarbeiter an der Hochschule Osnabrück tätig. Im Forschungsprojekt 'Intelligent Pendeln' (IIP) habe ich einen Baukasten zur anonymisierten Verarbeitung von Mobilitätsdaten für Städte und Stadtwerke entwickelt. Das Projekt wurde vom Bundesministerium für Forschung gefördert, lief drei Jahre (Start November 2022) und schloss acht Partner aus Osnabrück und Münster ein – darunter die Stadt Osnabrück, SWO Netz und mehrere Technologieunternehmen. Die entwickelten Anonymisierungswerkzeuge haben wir als Open-Source veröffentlicht."
+  },
+  {
+    "id": "education-01",
+    "title": "Bildung & Qualifikationen",
+    "content": "Ich habe ein duales Studium bei der Harting Technologiegruppe absolviert – parallel dazu eine Ausbildung und einen Bachelor-Abschluss in Elektrotechnik an der Privaten Hochschule für Wirtschaft und Technik (PHWT) in Diepholz. Danach habe ich einen Master in Informatik an der Hochschule Osnabrück gemacht, mit Schwerpunkten auf Softwarearchitektur und Internet der Dinge (IoT)."
+  },
+  {
+    "id": "project-harting",
+    "title": "Patentiertes Projekt: Automatisierte Warenbestandserfassung (Harting)",
+    "content": "Parallel zu meinem dualen Studium bei Harting habe ich ein System zur automatisierten Erfassung von Warenbeständen in Verkaufsautomaten entwickelt. Das System nutzt Sensorik zur Füllstandserkennung und löst Benachrichtigungen aus, wenn der Bestand unter einen definierten Schwellwert fällt. Die Entwicklung mündete in ein erteiltes Patent – mein erstes Projekt, das ich von der Idee bis zur Schutzrechtsreife gebracht habe."
+  },
+  {
+    "id": "project-seedhouse-infra",
+    "title": "Seedhouse: Infrastruktur-Dokumentation",
+    "content": "Bei Seedhouse habe ich die bestehende IT-Infrastruktur vollständig dokumentiert. Ziel war es, Transparenz über gewachsene Systeme herzustellen und eine verlässliche Grundlage für zukünftige Entscheidungen zu schaffen – ein klassischer erster Schritt vor jeder Modernisierung."
+  },
+  {
+    "id": "project-seedhouse-inventory",
+    "title": "Seedhouse: Inventarsystem für Werkstatt und Lager",
+    "content": "Ich habe bei Seedhouse ein Inventarsystem für Werkstatt und Lager konzipiert, entwickelt und eingerichtet. Es ermöglicht die strukturierte Verwaltung von Werkzeug, Hardware und Lagerbeständen und löst manuelle, fehleranfällige Prozesse ab."
+  },
+  {
+    "id": "project-seedhouse-platform",
+    "title": "Seedhouse: Gesellschafter-Plattform mit Deployment-Pipeline",
+    "content": "Ich habe eine Gesellschafter-Plattform für Seedhouse entwickelt und in Betrieb genommen – inklusive produktiver Website und vollständiger Deployment-Pipeline. Das Projekt umfasste Konzeption, Entwicklung, den Aufbau der CI/CD-Pipeline und das Produktiv-Deployment – eigenverantwortlich von der ersten Zeile Code bis zum laufenden Betrieb."
+  },
+  {
+    "id": "seedhouse-context",
+    "title": "Seedhouse Accelerator – Kontext",
+    "content": "Seedhouse ist ein Startup-Accelerator in Osnabrück mit Fokus auf Agrifood und digitale Technologien – eine öffentlich-private Partnerschaft, getragen von 36 mittelständischen Unternehmen und dem Land Niedersachsen. Seit der Gründung 2018 wurden über 100 Startups begleitet. 2024 wurde Seedhouse als erstes niedersächsisches de:hub für Agrifood-Innovation ausgezeichnet. Ich arbeite dort als Digital Innovation Manager und unterstütze Startups in der Früh- und Seed-Phase."
+  },
+  {
+    "id": "experience-fi",
+    "title": "Masterarbeit in Norwegen bei FI – Fremtidens Industri (DAAD-Stipendium)",
+    "content": "Meine Masterarbeit habe ich als Praktikant bei FI – Fremtidens Industri in Norwegen geschrieben. Den Aufenthalt habe ich vollständig selbst organisiert und durch ein Stipendium des Deutschen Akademischen Austauschdienstes (DAAD) finanziert. Diese Auslandserfahrung hat mich sowohl fachlich als auch persönlich geprägt."
+  },
+  {
+    "id": "experience-transitsense",
+    "title": "Gründer: TransitSense (eigenes IoT-Vorhaben)",
+    "content": "Parallel zu anderen Tätigkeiten habe ich ein Jahr lang als Selbstständiger an TransitSense gearbeitet – einem eigenen IoT-fokussierten Vorhaben. Ich schätze es, Ideen eigenverantwortlich umzusetzen, statt auf Strukturen zu warten."
+  },
+  {
+    "id": "experience-harting-eclass",
+    "title": "Manager Technische Anwendungen (eCl@ss, Harting)",
+    "content": "Im Rahmen meiner Zeit bei der Harting Technologiegruppe war ich als Manager Technische Anwendungen tätig. Ich habe digitale Produktkataloge nach dem eCl@ss Advanced Standard integriert und war Mitglied im eCl@ss Advanced Committee – einem Standardisierungsgremium für die digitale Beschreibung von Industrieprodukten."
+  },
+  {
+    "id": "experience-planetarium",
+    "title": "Wissenschaftskommunikation: Stiftung Planetarium Berlin",
+    "content": "Ich habe als Produktionsredakteur bei der Stiftung Planetarium Berlin gearbeitet. Diese Erfahrung in der Wissenschaftskommunikation prägt meinen Ansatz auf der Bühne bis heute: komplexe Themen klar und zugänglich machen – ohne sie zu vereinfachen."
+  },
+  {
+    "id": "speaking-01",
+    "title": "Vorträge & Bühne",
+    "content": "Ich bin als Redner auf Science Slam-Veranstaltungen und KI-fokussierten Branchenkonferenzen aufgetreten, unter anderem bei der IdeaExpo. Ich verdichte komplexe technische Themen zu klaren, greifbaren Geschichten. Mein Ansatz: Substanz statt Hype, Wissenschaft auf der Bühne. Ich spreche sowohl auf Deutsch als auch auf Englisch."
+  },
+  {
+    "id": "focus-legacy",
+    "title": "Schwerpunkt: Legacy-Modernisierung",
+    "content": "Ich interessiere mich sehr für die Modernisierung von Altsystemen, besonders im Bereich Mobility. Ich möchte künftig stärker mit Unternehmen daran arbeiten, gewachsene Systemlandschaften schrittweise und risikoarm zu transformieren – ohne den laufenden Betrieb zu gefährden. Klug bewegen und nachhaltig bauen ist mein Leitprinzip."
+  },
+  {
+    "id": "focus-ai",
+    "title": "Schwerpunkt: KI-Strategie & Anwendung",
+    "content": "Ich setze KI dort ein, wo sie nachweisbaren operativen Nutzen bringt – nicht dort, wo es trendy ist. Ich helfe dabei, zwischen echten KI-Anwendungsfällen und Hype zu unterscheiden, und entwickle pragmatische Implementierungsstrategien. Mein Fokus liegt auf nachvollziehbaren, erklärbaren Systemen, die im Alltag funktionieren."
+  },
+  {
+    "id": "focus-data",
+    "title": "Schwerpunkt: Dateninfrastruktur & Datenschutz",
+    "content": "Ich entwerfe und bewerte Dateninfrastrukturen mit starkem Fokus auf Datenschutz und Compliance – insbesondere im europäischen Kontext (DSGVO). Sicherheit und Privacy sind für mich Fundament, nicht Nachgedanke. Meine Arbeit im Projekt 'Intelligent Pendeln' hat diesen Schwerpunkt praktisch gefestigt: Dort habe ich Werkzeuge zur datenschutzkonformen Anonymisierung von Mobilitätsdaten entwickelt."
+  },
+  {
+    "id": "contact-01",
+    "title": "Kontakt",
+    "content": "Ich bin erreichbar unter contact@jankettler.info. Ich freue mich über Anfragen zu technischen Projekten in den Bereichen Softwarearchitektur, KI-Anwendungen und Dateninfrastruktur sowie über Einladungen als Redner auf Konferenzen und Veranstaltungen."
+  }
+]

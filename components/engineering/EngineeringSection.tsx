@@ -92,7 +92,7 @@ export default function EngineeringSection() {
           transition={{ duration: 0.7, delay: 0.2 }}
         >
           <span className="font-mono text-[10px] text-black/25 tracking-widest uppercase">
-            jan.kettler@seedhouse.de
+            contact@jankettler.info
           </span>
           <span className="font-mono text-[10px] text-black/25 tracking-widest uppercase">
             © {new Date().getFullYear()}
