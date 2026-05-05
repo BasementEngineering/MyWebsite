@@ -7,7 +7,7 @@ export const content = {
     name: 'Jan Kettler',
     links: [
       { label: 'Vorträge', href: '#vortraege' },
-      { label: 'Projekte', href: '#projekte' },
+      { label: 'Projekte', href: '/projekte' },
       { label: 'Kontakt', href: '#kontakt' },
     ],
   },
@@ -16,7 +16,7 @@ export const content = {
     headline: ['Legacy-Systeme.', 'Moderne Intelligenz.', 'Echter Mehrwert.'],
     cta: [
       { label: 'Vorträge', href: '#vortraege' },
-      { label: 'Projekte', href: '#projekte' },
+      { label: 'Projekte', href: '/projekte' },
     ],
   },
   speaker: {
