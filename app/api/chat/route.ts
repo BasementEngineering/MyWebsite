@@ -1,11 +1,11 @@
 import OpenAI from 'openai';
 import { NextRequest } from 'next/server';
 
-async function searchKnowledge(query: string): Promise<string> {
+async function searchKnowledge(query: string): Promise<{ context: string; count: number }> {
   const endpoint = process.env.AZURE_AI_SEARCH_ENDPOINT?.replace(/\/$/, '');
   const apiKey   = process.env.AZURE_AI_SEARCH_API_KEY;
   const index    = process.env.AZURE_AI_SEARCH_INDEX ?? 'jan-kettler';
-  if (!endpoint || !apiKey) return '';
+  if (!endpoint || !apiKey) return { context: '', count: 0 };
 
   try {
     const res = await fetch(
@@ -13,34 +13,30 @@ async function searchKnowledge(query: string): Promise<string> {
       {
         method:  'POST',
         headers: { 'Content-Type': 'application/json', 'api-key': apiKey },
-        body: JSON.stringify({
-          search: query,
-          top:    3,
-          select: 'title,content',
-        }),
+        body: JSON.stringify({ search: query, top: 3, select: 'title,content' }),
       },
     );
-    if (!res.ok) return '';
+    if (!res.ok) return { context: '', count: 0 };
     const data = await res.json();
-    return (data.value as { title: string; content: string }[])
-      .map(d => `### ${d.title}\n${d.content}`)
-      .join('\n\n');
+    const docs = data.value as { title: string; content: string }[];
+    return {
+      context: docs.map(d => `### ${d.title}\n${d.content}`).join('\n\n'),
+      count:   docs.length,
+    };
   } catch {
-    return '';
+    return { context: '', count: 0 };
   }
 }
 
 function getClient() {
   const raw = new URL(process.env.AZURE_AI_FOUNDRY_ENDPOINT!);
   const apiVersion = raw.searchParams.get('api-version') ?? undefined;
-  // Strip the specific operation path (/chat/completions) so the SDK can append it itself
   const basePath = raw.pathname.replace(/\/chat\/completions\/?$/, '');
   const baseURL  = `${raw.origin}${basePath}`;
-
   return new OpenAI({
-    apiKey:        process.env.AZURE_AI_FOUNDRY_API_KEY!,
+    apiKey:       process.env.AZURE_AI_FOUNDRY_API_KEY!,
     baseURL,
-    defaultQuery:  apiVersion ? { 'api-version': apiVersion } : undefined,
+    defaultQuery: apiVersion ? { 'api-version': apiVersion } : undefined,
   });
 }
 
@@ -56,31 +52,36 @@ export async function POST(req: NextRequest) {
   const missingVars = ['AZURE_AI_FOUNDRY_API_KEY', 'AZURE_AI_FOUNDRY_ENDPOINT', 'AZURE_AI_FOUNDRY_DEPLOYMENT']
     .filter(v => !process.env[v]);
   if (missingVars.length) {
-    return Response.json(
-      { error: `Missing env vars: ${missingVars.join(', ')}` },
-      { status: 503 },
-    );
+    return Response.json({ error: `Missing env vars: ${missingVars.join(', ')}` }, { status: 503 });
   }
 
   const { messages } = await req.json();
-  const client  = getClient();
-  const encoder = new TextEncoder();
-
-  const lastUserMessage = [...messages].reverse().find((m: { role: string }) => m.role === 'user')?.content ?? '';
-  const context = await searchKnowledge(lastUserMessage);
-
-  // Inject context directly into the last user message so the model sees facts next to the question
-  const messagesWithContext = context
-    ? messages.map((m: { role: string; content: string }, i: number) =>
-        i === messages.length - 1 && m.role === 'user'
-          ? { ...m, content: `[KONTEXT – verifizierte Fakten, NUR diese verwenden]\n${context}\n[/KONTEXT]\n\nFrage: ${m.content}` }
-          : m
-      )
-    : messages;
+  const client   = getClient();
+  const encoder  = new TextEncoder();
+  const lastUser = [...messages].reverse().find((m: { role: string }) => m.role === 'user')?.content ?? '';
 
   const stream = new ReadableStream({
     async start(controller) {
+      const emit = (payload: object) =>
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
+
       try {
+        // ── Step 1: RAG ────────────────────────────────────────────────────
+        emit({ type: 'status', step: 'rag_searching' });
+        const { context, count } = await searchKnowledge(lastUser);
+        emit({ type: 'status', step: 'rag_done', found: count });
+
+        const messagesWithContext = context
+          ? messages.map((m: { role: string; content: string }, i: number) =>
+              i === messages.length - 1 && m.role === 'user'
+                ? { ...m, content: `[KONTEXT – verifizierte Fakten, NUR diese verwenden]\n${context}\n[/KONTEXT]\n\nFrage: ${m.content}` }
+                : m
+            )
+          : messages;
+
+        // ── Step 2: Inference ──────────────────────────────────────────────
+        emit({ type: 'status', step: 'generating' });
+
         const apiStream = await client.chat.completions.create({
           model:      process.env.AZURE_AI_FOUNDRY_DEPLOYMENT!,
           max_tokens: 512,
@@ -93,24 +94,17 @@ export async function POST(req: NextRequest) {
 
         for await (const chunk of apiStream) {
           const delta = chunk.choices[0]?.delta?.content;
-          if (delta) {
-            const payload = JSON.stringify({ type: 'text', text: delta });
-            controller.enqueue(encoder.encode(`data: ${payload}\n\n`));
-          }
+          if (delta) emit({ type: 'text', text: delta });
           if (chunk.usage) {
             inputTokens  = chunk.usage.prompt_tokens;
             outputTokens = chunk.usage.completion_tokens;
           }
         }
 
-        const done = JSON.stringify({ type: 'done', inputTokens, outputTokens });
-        controller.enqueue(encoder.encode(`data: ${done}\n\n`));
+        emit({ type: 'done', inputTokens, outputTokens });
 
       } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        controller.enqueue(
-          encoder.encode(`data: ${JSON.stringify({ type: 'error', message: msg })}\n\n`),
-        );
+        emit({ type: 'error', message: err instanceof Error ? err.message : String(err) });
       } finally {
         controller.close();
       }
