@@ -6,9 +6,15 @@ export const content = {
   nav: {
     name: 'Jan Kettler',
     links: [
-      { label: 'Vorträge', href: '#vortraege' },
-      { label: 'Projekte', href: '/projekte' },
       { label: 'Kontakt', href: '#kontakt' },
+    ],
+  },
+  kontakt: {
+    intro: 'Oder kontaktieren Sie mich persönlich.',
+    email: 'jan.kettler@seedhouse.de',
+    links: [
+      { label: 'LinkedIn', href: '#' },
+      { label: 'GitHub', href: '#' },
     ],
   },
   hero: {
