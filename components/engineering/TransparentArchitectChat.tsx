@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { encode, decode } from 'gpt-tokenizer';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Phase   = 'idle' | 'sending' | 'rag' | 'generating' | 'streaming';
-type Token   = { id: number; text: string };
+type Token   = { id: number; tokenId: number; text: string; group: number; isFirst: boolean; isLast: boolean };
 type Message = { role: 'user' | 'assistant'; content: string; tokens?: Token[] };
 
 // ─── Pricing (Azure GPT-4o rates) ─────────────────────────────────────────────
@@ -33,22 +34,38 @@ function predict(input: string): string[] {
 }
 
 function estimateTokens(text: string): number {
-  return Math.max(1, Math.ceil(text.length / 4));
+  if (!text.trim()) return 0;
+  try { return encode(text).length; } catch { return Math.max(1, Math.ceil(text.length / 4)); }
 }
 
+// Real GPT BPE tokenization via gpt-tokenizer (cl100k_base vocab).
+// Tokens that belong to the same visual word are grouped so the UI
+// can render them side-by-side inside a shared border.
 function tokenizeInput(text: string): Token[] {
-  const words = text.trim().match(/\S+/g) ?? [];
+  const ids  = encode(text);
   const result: Token[] = [];
-  let id = 1;
-  for (const word of words) {
-    if (word.length > 9) {
-      for (let i = 0; i < word.length; i += 4) {
-        result.push({ id: id++, text: word.slice(i, Math.min(i + 4, word.length)) });
-      }
-    } else {
-      result.push({ id: id++, text: word });
-    }
+  let group  = 0;
+  let seqId  = 1;
+
+  // Decode each token individually to get its string
+  const texts = ids.map(id => decode([id]));
+
+  // A new visual word-group starts when the decoded text begins with a space
+  // or when the previous token ended with a space (GPT attaches spaces to the
+  // START of the following token, so " hello" is one token).
+  let groupStart = 0;
+  for (let i = 0; i < texts.length; i++) {
+    const t = texts[i];
+    const startsGroup = i === 0 || t.startsWith(' ');
+    if (startsGroup) { group++; groupStart = i; }
+
+    const isFirst = i === groupStart;
+    // peek ahead: next token starts a new group (or we're last)?
+    const isLast = i === texts.length - 1 || texts[i + 1].startsWith(' ');
+
+    result.push({ id: seqId++, tokenId: ids[i], text: t, group, isFirst, isLast });
   }
+
   return result;
 }
 
@@ -565,28 +582,40 @@ function ChatBubble({ msg }: { msg: Message }) {
         wordBreak: 'break-word',
       }}>
         {isUser && msg.tokens ? (
-          <div style={{ lineHeight: 2.4 }}>
-            {msg.tokens.map((tok, i) => (
-              <span
-                key={tok.id}
-                style={{
-                  display: 'inline-block',
-                  margin: '1px 2px',
-                  padding: '1px 6px',
-                  border: `1px solid rgba(74,222,128,0.25)`,
-                  background: 'rgba(74,222,128,0.06)',
-                  fontSize: 13,
-                  fontFamily: MONO,
-                  color: C.text,
-                  animation: 'tokenFadeIn 0.08s ease-out',
-                  animationDelay: `${Math.min(i * 18, 320)}ms`,
-                  animationFillMode: 'both',
-                }}
-              >
-                {tok.text}
-                <sub style={{ fontSize: 8, color: C.textFaint, marginLeft: 1 }}>#{tok.id}</sub>
-              </span>
-            ))}
+          <div style={{ lineHeight: 2.6, wordBreak: 'break-word' }}>
+            {msg.tokens.map((tok, i) => {
+              // Strip the leading space from the text for display — we render
+              // the gap between groups via marginLeft on isFirst tokens.
+              const displayText = tok.text.startsWith(' ') ? tok.text.slice(1) : tok.text;
+              const alone = tok.isFirst && tok.isLast;
+              return (
+                <span
+                  key={tok.id}
+                  style={{
+                    display: 'inline-block',
+                    marginLeft:  tok.isFirst ? (i === 0 ? 0 : '0.35em') : 0,
+                    marginBottom: 3,
+                    padding: '2px 5px',
+                    // Shared border: only draw the sides that start/end the group
+                    borderTop:    `1px solid rgba(74,222,128,0.3)`,
+                    borderBottom: `1px solid rgba(74,222,128,0.3)`,
+                    borderLeft:   tok.isFirst ? `1px solid rgba(74,222,128,0.3)` : `1px solid rgba(74,222,128,0.12)`,
+                    borderRight:  tok.isLast  ? `1px solid rgba(74,222,128,0.3)` : 'none',
+                    borderRadius: alone ? 2 : tok.isFirst ? '2px 0 0 2px' : tok.isLast ? '0 2px 2px 0' : 0,
+                    background:   'rgba(74,222,128,0.06)',
+                    fontSize: 13,
+                    fontFamily: MONO,
+                    color: C.text,
+                    animation: 'tokenFadeIn 0.08s ease-out',
+                    animationDelay: `${Math.min(i * 18, 320)}ms`,
+                    animationFillMode: 'both',
+                  }}
+                >
+                  {displayText}
+                  <sub style={{ fontSize: 7, color: C.textFaint, marginLeft: 1 }}>{tok.tokenId}</sub>
+                </span>
+              );
+            })}
           </div>
         ) : (
           msg.content
