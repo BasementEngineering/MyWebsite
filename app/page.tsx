@@ -1,7 +1,8 @@
 import Nav from '@/components/nav/Nav';
 import Hero from '@/components/surface/Hero';
+import SkillsTrinity from '@/components/surface/SkillsTrinity';
 import TechReveal from '@/components/transition/TechReveal';
-import EngineeringSection from '@/components/engineering/EngineeringSection';
+import TransparentArchitectChat from '@/components/engineering/TransparentArchitectChat';
 import { parseTokenUsage } from '@/lib/parseTokenUsage';
 
 export default function Page() {
@@ -11,8 +12,9 @@ export default function Page() {
     <>
       <Nav />
       <Hero />
+      <SkillsTrinity />
       <TechReveal layers={layers} />
-      <EngineeringSection />
+      <TransparentArchitectChat />
     </>
   );
 }

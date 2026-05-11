@@ -1,11 +1,28 @@
 'use client';
 
+import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { content } from '@/lib/content';
 
 export default function Hero() {
   return (
     <section className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
+      <motion.div
+        className="mb-10 w-40 h-40 rounded-full overflow-hidden ring-1 ring-gray-200"
+        initial={{ opacity: 0, scale: 0.92 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.9, ease: 'easeOut' }}
+      >
+        <Image
+          src="/images/Jan.jpg"
+          alt="Jan Kettler"
+          width={160}
+          height={160}
+          className="object-cover w-full h-full"
+          priority
+        />
+      </motion.div>
+
       <motion.p
         className="font-sans text-xs tracking-[0.35em] uppercase text-gray-400 mb-8"
         initial={{ opacity: 0, y: 8 }}
@@ -29,22 +46,14 @@ export default function Hero() {
         ))}
       </h1>
 
-      <motion.div
-        className="mt-14 flex gap-5"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.8, delay: 0.7 }}
+      <motion.p
+        className="mt-8 max-w-xl font-sans text-sm text-gray-500 leading-relaxed"
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.9, delay: 0.6, ease: 'easeOut' }}
       >
-        {content.hero.cta.map((cta) => (
-          <a
-            key={cta.href}
-            href={cta.href}
-            className="font-sans text-xs tracking-[0.2em] uppercase px-8 py-3.5 border border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white transition-colors duration-300"
-          >
-            {cta.label}
-          </a>
-        ))}
-      </motion.div>
+        {content.hero.subheadline}
+      </motion.p>
 
       {/* Scroll indicator */}
       <motion.div

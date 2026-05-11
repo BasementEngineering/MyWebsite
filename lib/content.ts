@@ -13,11 +13,38 @@ export const content = {
   },
   hero: {
     eyebrow: 'Jan Kettler',
-    headline: ['Legacy-Systeme.', 'Moderne Intelligenz.', 'Echter Mehrwert.'],
-    cta: [
-      { label: 'Vorträge', href: '#vortraege' },
-      { label: 'Projekte', href: '/projekte' },
+    headline: ['Echte Systeme.', 'Moderne Intelligenz.', 'Realer Impact.'],
+    subheadline:
+      'Ich bringe KI dorthin, wo sie gebraucht wird – mit Ingenieursverstand, ohne Buzzword-Bingo und mit dem Blick für das Risiko.',
+  },
+  trinity: {
+    intro: 'Ich bin',
+    pillars: [
+      {
+        label: 'System Ingenieur',
+        body: 'Ein System ist erst dann gut, wenn es die Realität überlebt. Ich verbinde Elektro- und Informationstechnik zu robusten Architekturen. Ob 3D-Design, Hardware-Prototyping oder komplexe Software-Systeme: Ich denke in stabilen Strukturen statt in kurzlebigen Hypes.',
+        images: [
+          '/images/Engineer/P1010869.jpg',
+          '/images/Engineer/Hackathon.jpg',
+          '/images/Engineer/MINT_Schiffbau13.JPG',
+        ],
+      },
+      {
+        label: 'Pragmatischer KI Experte',
+        body: 'Ich bringe die neuesten Sprach- und Machine-Learning-Modelle aus der Theorie in die Produktion. Mein Fokus liegt auf der praktischen Implementierung: Wie machen wir KI für Teams nutzbar, sicher und ökonomisch sinnvoll? Ich evaluiere den State-of-the-Art und baue daraus Werkzeuge mit Substanz.',
+        images: [],
+      },
+      {
+        label: 'Kommunikator',
+        body: 'Wahre Expertise beweist sich darin, Komplexität verständlich zu machen. Als erfahrener Science Slammer und Speaker übersetze ich Deep-Tech in klare Visionen – für Entscheider, Fachabteilungen oder das große Publikum.',
+        images: [
+          '/images/Speaker/_DSC2142.jpg',
+          '/images/Speaker/PitchSCH.jpg',
+          '/images/Speaker/PitchHackathon.jpg',
+        ],
+      },
     ],
+    cta: { label: 'Talk anfragen', href: 'mailto:jan.kettler@seedhouse.de' },
   },
   speaker: {
     eyebrow: 'Öffentliche Auftritte',
