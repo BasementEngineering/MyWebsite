@@ -7,7 +7,7 @@ type Phase   = 'idle' | 'sending' | 'rag' | 'generating' | 'streaming';
 type Token   = { id: number; text: string };
 type Message = { role: 'user' | 'assistant'; content: string; tokens?: Token[] };
 
-// ─── Pricing (Azure GPT-4o rates — update for phi4 if known) ─────────────────
+// ─── Pricing (Azure GPT-4o rates) ─────────────────────────────────────────────
 const COST_IN  = 2.50  / 1_000_000;
 const COST_OUT = 10.00 / 1_000_000;
 
@@ -36,7 +36,6 @@ function estimateTokens(text: string): number {
   return Math.max(1, Math.ceil(text.length / 4));
 }
 
-// Split into displayable tokens: words, with long words subword-split at ~4 chars
 function tokenizeInput(text: string): Token[] {
   const words = text.trim().match(/\S+/g) ?? [];
   const result: Token[] = [];
@@ -54,6 +53,28 @@ function tokenizeInput(text: string): Token[] {
 }
 
 const MONO = 'var(--font-jetbrains-mono, "JetBrains Mono", monospace)';
+const MAX_INPUT_TOKENS = 200;
+
+const SUGGESTED_PROMPTS = [
+  'Was machst du beruflich und was treibt dich an?',
+  'Wie setzt du KI konkret in der Praxis ein?',
+  'Worüber hast du als Speaker schon gesprochen?',
+];
+
+// ─── Design tokens ────────────────────────────────────────────────────────────
+const C = {
+  bg:         '#0f0f0f',
+  bgMessage:  '#181818',
+  bgUser:     '#1e2a1e',
+  bgInput:    '#161616',
+  border:     'rgba(255,255,255,0.08)',
+  borderStrong: 'rgba(255,255,255,0.15)',
+  text:       '#e8e8e8',
+  textDim:    'rgba(232,232,232,0.45)',
+  textFaint:  'rgba(232,232,232,0.22)',
+  green:      '#4ade80',
+  greenDim:   'rgba(74,222,128,0.5)',
+};
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function TransparentArchitectChat() {
@@ -63,24 +84,31 @@ export default function TransparentArchitectChat() {
   const [ragFound,    setRagFound]    = useState(0);
   const [tokenBlocks, setTokenBlocks] = useState<Token[]>([]);
   const [predictions, setPredictions] = useState<string[]>([]);
-  const [tps,         setTps]         = useState(0);
-  const [totalCost,   setTotalCost]   = useState(0);
-  const [totalTokens, setTotalTokens] = useState(0);
-  const [error,       setError]       = useState('');
+  const [tps,          setTps]          = useState(0);
+  const [totalCost,    setTotalCost]    = useState(0);
+  const [totalTokens,  setTotalTokens]  = useState(0);
+  const [error,        setError]        = useState('');
+  const [responseTime, setResponseTime] = useState<number | null>(null);
+  const [liveTime,     setLiveTime]     = useState<number>(0);
 
+  const messagesRef  = useRef<HTMLDivElement>(null);
   const bottomRef    = useRef<HTMLDivElement>(null);
   const abortRef     = useRef<AbortController | null>(null);
   const streamStart  = useRef(0);
+  const sendStart    = useRef(0);
   const chunkCount   = useRef(0);
   const tpsTimer     = useRef<ReturnType<typeof setInterval> | null>(null);
+  const liveTimer    = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const isActive     = phase !== 'idle';
   const estInputTok  = estimateTokens(input);
   const estOutputTok = 200;
   const estCost      = estInputTok * COST_IN + estOutputTok * COST_OUT;
+  const overLimit    = estInputTok > MAX_INPUT_TOKENS;
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const el = messagesRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
   }, [messages, tokenBlocks.length, phase]);
 
   useEffect(() => { setPredictions(predict(input)); }, [input]);
@@ -91,9 +119,9 @@ export default function TransparentArchitectChat() {
     setInput(parts.join(' ') + ' ');
   };
 
-  const send = useCallback(async () => {
-    const text = input.trim();
-    if (!text || isActive) return;
+  const send = useCallback(async (overrideText?: string) => {
+    const text = (overrideText ?? input).trim();
+    if (!text || isActive || overLimit) return;
 
     const userTokens = tokenizeInput(text);
     const next: Message[] = [...messages, { role: 'user', content: text, tokens: userTokens }];
@@ -103,8 +131,14 @@ export default function TransparentArchitectChat() {
     setTokenBlocks([]);
     setRagFound(0);
     setError('');
+    setResponseTime(null);
+    setLiveTime(0);
     chunkCount.current = 0;
     streamStart.current = performance.now();
+    sendStart.current   = performance.now();
+    liveTimer.current = setInterval(() => {
+      setLiveTime(parseFloat(((performance.now() - sendStart.current) / 1000).toFixed(1)));
+    }, 100);
 
     tpsTimer.current = setInterval(() => {
       const elapsed = (performance.now() - streamStart.current) / 1000;
@@ -169,15 +203,20 @@ export default function TransparentArchitectChat() {
 
       setMessages(m => [...m, { role: 'assistant', content: assembled }]);
       setTokenBlocks([]);
+      setResponseTime(parseFloat(((performance.now() - sendStart.current) / 1000).toFixed(1)));
 
     } catch (e) {
-      if ((e as Error).name !== 'AbortError') setError((e as Error).message);
+      if ((e as Error).name !== 'AbortError') {
+        setError((e as Error).message);
+        setResponseTime(parseFloat(((performance.now() - sendStart.current) / 1000).toFixed(1)));
+      }
     } finally {
       setPhase('idle');
       setTps(0);
-      if (tpsTimer.current) clearInterval(tpsTimer.current);
+      if (tpsTimer.current)  clearInterval(tpsTimer.current);
+      if (liveTimer.current) clearInterval(liveTimer.current);
     }
-  }, [input, messages, isActive, estInputTok]);
+  }, [input, messages, isActive, overLimit, estInputTok, liveTime]);
 
   const onKey = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
@@ -186,49 +225,87 @@ export default function TransparentArchitectChat() {
   // ─── Render ────────────────────────────────────────────────────────────────
   return (
     <div style={{
-      border: '1px solid rgba(0,0,0,0.15)',
       fontFamily: MONO,
-      backgroundColor: 'rgba(242,240,233,0.7)',
-      backdropFilter: 'blur(4px)',
+      backgroundColor: C.bg,
+      border: `1px solid ${C.borderStrong}`,
+      borderRadius: 4,
+      overflow: 'hidden',
     }}>
 
-      {/* ── Header / metrics ─────────────────────────────────────────────── */}
+      {/* ── Header bar ──────────────────────────────────────────────────────── */}
       <div style={{
-        padding: '9px 14px',
-        borderBottom: '1px solid rgba(0,0,0,0.1)',
+        padding: '10px 16px',
+        borderBottom: `1px solid ${C.border}`,
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
         flexWrap: 'wrap',
         gap: 8,
+        backgroundColor: '#0a0a0a',
       }}>
-        <div>
-          <span style={{ fontSize: 10, opacity: 0.3 }}>// </span>
-          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
-            Transparent Architect Chat
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {/* Traffic light dots */}
+          <span style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: '#ff5f57', display: 'inline-block' }} />
+          <span style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: '#febc2e', display: 'inline-block' }} />
+          <span style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: '#28c840', display: 'inline-block' }} />
+          <span style={{ fontSize: 11, color: C.textDim, marginLeft: 8, letterSpacing: '0.08em' }}>
+            transparent-architect-chat
           </span>
         </div>
-        <div style={{ display: 'flex', gap: 18, fontSize: 10 }}>
-          <Metric label="TPS"    value={phase === 'streaming' ? String(tps) : '—'} active={phase === 'streaming'} green />
-          <Metric label="COST"   value={`$${totalCost.toFixed(6)}`} green />
+        <div style={{ display: 'flex', gap: 20, fontSize: 11 }}>
+          <Metric label="TIME"   value={isActive ? `${liveTime}s` : responseTime !== null ? `${responseTime}s` : '—'} active={isActive} />
+          <Metric label="TPS"    value={phase === 'streaming' ? String(tps) : '—'} active={phase === 'streaming'} />
+          <Metric label="COST"   value={`$${totalCost.toFixed(6)}`} highlight={totalCost > 0} />
           <Metric label="TOKENS" value={totalTokens.toLocaleString('de-DE')} />
         </div>
       </div>
 
-      {/* ── Message list ─────────────────────────────────────────────────── */}
-      <div style={{
-        height: 380,
+      {/* ── Message list ────────────────────────────────────────────────────── */}
+      <div ref={messagesRef} style={{
+        height: 420,
         overflowY: 'auto',
-        padding: '14px 14px 8px',
+        padding: '20px 20px 12px',
         display: 'flex',
         flexDirection: 'column',
-        gap: 14,
+        gap: 20,
       }}>
         {messages.length === 0 && !isActive && (
-          <div style={{ margin: 'auto', opacity: 0.25, fontSize: 11, textAlign: 'center', lineHeight: 2 }}>
-            <div>// Transparent Architect Chat</div>
-            <div>// Jede Antwort zeigt Tokens, TPS und Kosten in Echtzeit.</div>
-            <div>// Ask me anything — I respond in your language.</div>
+          <div style={{ margin: 'auto', textAlign: 'center' }}>
+            <div style={{ fontSize: 13, color: C.textFaint, marginBottom: 20 }}>
+              // Ask me anything about Jan
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center' }}>
+              {SUGGESTED_PROMPTS.map(prompt => (
+                <button
+                  key={prompt}
+                  onClick={() => send(prompt)}
+                  style={{
+                    fontFamily: MONO,
+                    fontSize: 12,
+                    padding: '8px 16px',
+                    border: `1px solid ${C.border}`,
+                    background: 'transparent',
+                    color: C.textDim,
+                    cursor: 'pointer',
+                    borderRadius: 3,
+                    maxWidth: 420,
+                    textAlign: 'left',
+                    lineHeight: 1.5,
+                    transition: 'border-color 0.2s, color 0.2s',
+                  }}
+                  onMouseEnter={e => {
+                    (e.currentTarget as HTMLButtonElement).style.borderColor = C.borderStrong;
+                    (e.currentTarget as HTMLButtonElement).style.color = C.text;
+                  }}
+                  onMouseLeave={e => {
+                    (e.currentTarget as HTMLButtonElement).style.borderColor = C.border;
+                    (e.currentTarget as HTMLButtonElement).style.color = C.textDim;
+                  }}
+                >
+                  &rsaquo; {prompt}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
@@ -236,29 +313,36 @@ export default function TransparentArchitectChat() {
           <ChatBubble key={i} msg={msg} />
         ))}
 
-        {/* Pipeline status — shown while active */}
         {isActive && (
           <PipelineIndicator phase={phase} ragFound={ragFound} />
         )}
 
-        {/* Live streaming token blocks */}
         {tokenBlocks.length > 0 && (
           <div>
-            <Label>// assistant · streaming</Label>
-            <div style={{ lineHeight: 2.2, marginTop: 4 }}>
+            <MsgLabel>// assistant · streaming</MsgLabel>
+            <div style={{
+              marginTop: 8,
+              padding: '12px 14px',
+              backgroundColor: C.bgMessage,
+              border: `1px solid ${C.border}`,
+              borderRadius: 3,
+              fontSize: 14,
+              color: C.text,
+              lineHeight: 2.2,
+            }}>
               {tokenBlocks.map(b => (
                 <span key={b.id} className="token-block">
                   {b.text}
-                  <sub style={{ fontSize: 7, opacity: 0.3, marginLeft: 1 }}>#{b.id}</sub>
+                  <sub style={{ fontSize: 8, color: C.textFaint, marginLeft: 1 }}>#{b.id}</sub>
                 </span>
               ))}
-              <span className="cursor-blink">▌</span>
+              <span className="cursor-blink" style={{ color: C.green }}>▌</span>
             </div>
           </div>
         )}
 
         {error && (
-          <div style={{ fontSize: 11, color: '#c53030', opacity: 0.8 }}>
+          <div style={{ fontSize: 13, color: '#f87171' }}>
             // Error: {error}
           </div>
         )}
@@ -266,40 +350,44 @@ export default function TransparentArchitectChat() {
         <div ref={bottomRef} />
       </div>
 
-      {/* ── Token estimator + word predictions ───────────────────────────── */}
+      {/* ── Token estimator + word predictions ──────────────────────────────── */}
       <div style={{
-        borderTop: '1px solid rgba(0,0,0,0.08)',
-        padding: '6px 14px',
+        borderTop: `1px solid ${C.border}`,
+        padding: '7px 16px',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        minHeight: 32,
+        minHeight: 34,
         flexWrap: 'wrap',
         gap: 6,
+        backgroundColor: '#0a0a0a',
       }}>
-        <span style={{ fontSize: 10, opacity: input.trim() ? 0.6 : 0.25 }}>
+        <span style={{ fontSize: 11, color: overLimit ? '#f87171' : input.trim() ? C.textDim : C.textFaint }}>
           {input.trim() ? (
             <>
               {'~'}
-              {/* key trick: remounts on every count change → restarts tokenFadeIn */}
               <span
                 key={estInputTok}
                 style={{
                   animation: 'tokenFadeIn 0.12s ease-out',
-                  color: '#15803d',
+                  color: overLimit ? '#f87171' : C.green,
                   fontWeight: 700,
                   fontVariantNumeric: 'tabular-nums',
                 }}
               >
                 {estInputTok}
               </span>
-              {' tokens  ·  ~$'}
-              <span style={{ fontVariantNumeric: 'tabular-nums' }}>
-                {estCost.toFixed(6)}
-              </span>
-              {' estimated'}
+              {` / ${MAX_INPUT_TOKENS} tokens`}
+              {!overLimit && (
+                <>
+                  {'  ·  ~$'}
+                  <span style={{ fontVariantNumeric: 'tabular-nums' }}>{estCost.toFixed(6)}</span>
+                  {' estimated'}
+                </>
+              )}
+              {overLimit && '  ·  Nachricht zu lang'}
             </>
-          ) : '// token estimator'}
+          ) : `// max ${MAX_INPUT_TOKENS} tokens per message`}
         </span>
         <div style={{ display: 'flex', gap: 5 }}>
           {predictions.map(w => (
@@ -307,14 +395,14 @@ export default function TransparentArchitectChat() {
               key={w}
               onClick={() => acceptWord(w)}
               style={{
-                padding: '1px 8px',
-                border: '1px solid rgba(0,0,0,0.15)',
+                padding: '2px 9px',
+                border: `1px solid ${C.border}`,
                 background: 'transparent',
                 fontFamily: MONO,
-                fontSize: 10,
+                fontSize: 11,
                 cursor: 'pointer',
-                color: '#1a1a1a',
-                opacity: 0.6,
+                color: C.textDim,
+                borderRadius: 2,
               }}
             >
               {w}
@@ -323,43 +411,49 @@ export default function TransparentArchitectChat() {
         </div>
       </div>
 
-      {/* ── Input area ───────────────────────────────────────────────────── */}
-      <div style={{ borderTop: '1px solid rgba(0,0,0,0.12)', display: 'flex', alignItems: 'stretch' }}>
+      {/* ── Input area ──────────────────────────────────────────────────────── */}
+      <div style={{
+        borderTop: `1px solid ${C.borderStrong}`,
+        display: 'flex',
+        alignItems: 'stretch',
+        backgroundColor: C.bgInput,
+      }}>
         <textarea
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={onKey}
-          placeholder="// type your message  (Enter to send, Shift+Enter for newline)"
+          placeholder="Nachricht eingeben  (Enter zum Senden, Shift+Enter für Zeilenumbruch)"
           disabled={isActive}
-          rows={2}
+          rows={3}
           style={{
             flex: 1,
             resize: 'none',
             border: 'none',
             outline: 'none',
             background: 'transparent',
-            padding: '10px 14px',
+            padding: '14px 16px',
             fontFamily: MONO,
-            fontSize: 12,
-            lineHeight: 1.6,
-            color: '#1a1a1a',
+            fontSize: 14,
+            lineHeight: 1.65,
+            color: C.text,
           }}
         />
         <button
-          onClick={send}
-          disabled={isActive || !input.trim()}
+          onClick={() => send()}
+          disabled={isActive || !input.trim() || overLimit}
           style={{
-            padding: '0 18px',
+            padding: '0 22px',
             border: 'none',
-            borderLeft: '1px solid rgba(0,0,0,0.12)',
-            background: 'transparent',
+            borderLeft: `1px solid ${C.borderStrong}`,
+            background: isActive || !input.trim() || overLimit ? 'transparent' : C.green,
             fontFamily: MONO,
-            fontSize: 10,
+            fontSize: 11,
             fontWeight: 700,
             letterSpacing: '0.1em',
-            cursor: isActive || !input.trim() ? 'default' : 'pointer',
-            color: isActive || !input.trim() ? 'rgba(0,0,0,0.2)' : '#1a1a1a',
+            cursor: isActive || !input.trim() || overLimit ? 'default' : 'pointer',
+            color: isActive || !input.trim() || overLimit ? C.textFaint : '#0f0f0f',
             whiteSpace: 'nowrap',
+            transition: 'background 0.2s, color 0.2s',
           }}
         >
           {isActive ? '···' : 'SEND ↵'}
@@ -383,50 +477,54 @@ function PipelineIndicator({ phase, ragFound }: { phase: Phase; ragFound: number
 
   return (
     <div>
-      <Label>// pipeline</Label>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 5 }}>
-        <Step icon={httpDone ? '✓' : '▶'} green={httpDone} dim={false}
-          label="POST /api/chat" blink={!httpDone} />
-        <Step icon={ragDone ? '✓' : ragActive ? '▶' : '·'} green={ragDone} dim={!ragActive && !ragDone}
-          label={ragLabel} blink={ragActive} />
-        <Step icon={genStream ? '●' : genActive ? '▶' : '·'} green={false} dim={!genActive && !genStream}
-          label={`phi4-mini-instruct${genStream ? '  · streaming' : ''}`} blink={genActive} pulse={genStream} />
+      <MsgLabel>// pipeline</MsgLabel>
+      <div style={{
+        marginTop: 8,
+        padding: '10px 14px',
+        backgroundColor: C.bgMessage,
+        border: `1px solid ${C.border}`,
+        borderRadius: 3,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 6,
+      }}>
+        <Step icon={httpDone ? '✓' : '▶'} green={httpDone} dim={false}  label="POST /api/chat"            blink={!httpDone} />
+        <Step icon={ragDone ? '✓' : ragActive ? '▶' : '·'} green={ragDone} dim={!ragActive && !ragDone}   label={ragLabel}  blink={ragActive} />
+        <Step icon={genStream ? '●' : genActive ? '▶' : '·'} green={false} dim={!genActive && !genStream} label={`phi4-mini-instruct${genStream ? '  · streaming' : ''}`} blink={genActive} pulse={genStream} />
       </div>
     </div>
   );
 }
 
-function Step({
-  icon, green, dim, label, blink, pulse,
-}: {
+function Step({ icon, green, dim, label, blink, pulse }: {
   icon: string; green: boolean; dim: boolean;
   label: string; blink?: boolean; pulse?: boolean;
 }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 10 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12 }}>
       <span style={{
-        width: 10, flexShrink: 0,
-        color: green ? '#15803d' : dim ? 'rgba(0,0,0,0.25)' : '#1a1a1a',
+        width: 12, flexShrink: 0,
+        color: green ? C.green : dim ? C.textFaint : C.textDim,
         fontWeight: green ? 700 : 400,
       }}>
         {icon}
       </span>
-      <span style={{ opacity: dim ? 0.3 : 0.65 }}>{label}</span>
-      {blink  && <span style={{ opacity: 0.4 }} className="cursor-blink">···</span>}
-      {pulse  && <span style={{ opacity: 0.5 }} className="cursor-blink">▌</span>}
+      <span style={{ color: dim ? C.textFaint : C.textDim }}>{label}</span>
+      {blink && <span style={{ color: C.textFaint }} className="cursor-blink">···</span>}
+      {pulse && <span style={{ color: C.green }}    className="cursor-blink">▌</span>}
     </div>
   );
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
-function Metric({ label, value, active, green }: {
-  label: string; value: string; active?: boolean; green?: boolean;
+function Metric({ label, value, active, highlight }: {
+  label: string; value: string; active?: boolean; highlight?: boolean;
 }) {
   return (
-    <span style={{ opacity: active === false ? 0.3 : 1 }}>
-      <span style={{ opacity: 0.45 }}>{label} </span>
+    <span style={{ opacity: active === false ? 0.35 : 1 }}>
+      <span style={{ color: C.textFaint }}>{label} </span>
       <span style={{
-        color: green ? '#15803d' : 'inherit',
+        color: highlight ? C.green : C.textDim,
         fontVariantNumeric: 'tabular-nums',
         fontWeight: 600,
         minWidth: 56,
@@ -438,9 +536,9 @@ function Metric({ label, value, active, green }: {
   );
 }
 
-function Label({ children }: { children: React.ReactNode }) {
+function MsgLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ fontSize: 9, opacity: 0.3, letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 2 }}>
+    <div style={{ fontSize: 10, color: C.textFaint, letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 2 }}>
       {children}
     </div>
   );
@@ -451,39 +549,42 @@ function ChatBubble({ msg }: { msg: Message }) {
   const tokenCount = msg.tokens?.length ?? estimateTokens(msg.content);
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: isUser ? 'flex-end' : 'flex-start' }}>
-      <Label>
+      <MsgLabel>
         {isUser ? `> user · ${tokenCount} tokens` : '// assistant'}
-      </Label>
+      </MsgLabel>
       <div style={{
-        maxWidth: '92%',
-        fontSize: 12,
-        lineHeight: 1.65,
-        padding: isUser && msg.tokens ? '5px 6px' : '8px 11px',
-        border: '1px solid rgba(0,0,0,0.09)',
-        backgroundColor: isUser ? 'rgba(0,0,0,0.04)' : 'transparent',
+        maxWidth: '88%',
+        fontSize: 14,
+        lineHeight: 1.7,
+        padding: isUser && msg.tokens ? '8px 10px' : '12px 14px',
+        border: `1px solid ${C.border}`,
+        borderRadius: 3,
+        backgroundColor: isUser ? C.bgUser : C.bgMessage,
+        color: C.text,
         whiteSpace: isUser && msg.tokens ? 'normal' : 'pre-wrap',
         wordBreak: 'break-word',
       }}>
         {isUser && msg.tokens ? (
-          <div style={{ lineHeight: 2.3 }}>
+          <div style={{ lineHeight: 2.4 }}>
             {msg.tokens.map((tok, i) => (
               <span
                 key={tok.id}
                 style={{
                   display: 'inline-block',
                   margin: '1px 2px',
-                  padding: '1px 5px',
-                  border: '1px solid rgba(0,0,0,0.22)',
-                  background: 'rgba(0,0,0,0.025)',
-                  fontSize: 12,
+                  padding: '1px 6px',
+                  border: `1px solid rgba(74,222,128,0.25)`,
+                  background: 'rgba(74,222,128,0.06)',
+                  fontSize: 13,
                   fontFamily: MONO,
+                  color: C.text,
                   animation: 'tokenFadeIn 0.08s ease-out',
                   animationDelay: `${Math.min(i * 18, 320)}ms`,
                   animationFillMode: 'both',
                 }}
               >
                 {tok.text}
-                <sub style={{ fontSize: 7, opacity: 0.28, marginLeft: 1 }}>#{tok.id}</sub>
+                <sub style={{ fontSize: 8, color: C.textFaint, marginLeft: 1 }}>#{tok.id}</sub>
               </span>
             ))}
           </div>

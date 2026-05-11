@@ -1,6 +1,8 @@
 import OpenAI from 'openai';
 import { NextRequest } from 'next/server';
 
+export const maxDuration = 60; // seconds — requires Vercel Pro for values > 10
+
 async function searchKnowledge(query: string): Promise<{ context: string; count: number }> {
   const endpoint = process.env.AZURE_AI_SEARCH_ENDPOINT?.replace(/\/$/, '');
   const apiKey   = process.env.AZURE_AI_SEARCH_API_KEY;
@@ -13,7 +15,8 @@ async function searchKnowledge(query: string): Promise<{ context: string; count:
       {
         method:  'POST',
         headers: { 'Content-Type': 'application/json', 'api-key': apiKey },
-        body: JSON.stringify({ search: query, top: 3, select: 'title,content' }),
+        body:    JSON.stringify({ search: query, top: 3, select: 'title,content' }),
+        signal:  AbortSignal.timeout(5000),
       },
     );
     if (!res.ok) return { context: '', count: 0 };
