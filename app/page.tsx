@@ -13,7 +13,7 @@ export default function Page() {
       <SkillsTrinity />
       <TechReveal />
 
-      <section className="py-24 px-6 bg-white">
+      <section className="py-24 px-6 bg-parchment engineering-layer">
         <div className="max-w-5xl mx-auto">
           <h2 className="font-sans font-light text-gray-900 text-4xl md:text-6xl text-center mb-16">
             Bei Fragen, fragen Sie meine KI.

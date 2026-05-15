@@ -110,8 +110,8 @@ const PHONE_ROT_X    =  0.06;
 
 const CAM_START      = new THREE.Vector3(0, 0, 2.2);
 const CAM_END        = new THREE.Vector3(0, 0.8, 10.5);
-const INTRO_START    = 0.38;
-const INTRO_END      = 0.56;
+const INTRO_START    = 0.28; // keep in sync with STAGE.phoneIn[0] in TechReveal.tsx
+const INTRO_END      = 0.46; // auto-play fires here; must be < sticky release (~0.50)
 
 // Ideation panels
 const PANEL_W        = 0.7;
@@ -281,6 +281,16 @@ function IdeationPanel({
   useFrame(() => {
     if (!groupRef.current) return;
     const elapsed = getElapsed(autoPlayRef.current);
+    groupRef.current.visible = elapsed >= 0;
+    if (elapsed < 0) {
+      if (labelRef.current)   labelRef.current.style.opacity   = '0';
+      if (counterRef.current) counterRef.current.style.opacity = '0';
+      if (triggered.current) {
+        triggered.current = false;
+        setCountActive(false);
+      }
+      return;
+    }
     const t = phaseT(elapsed, delay, duration);
     groupRef.current.position.x = lerp(0, finalX, t);
     groupRef.current.rotation.y = PHONE_ROT_Y;
@@ -297,7 +307,7 @@ function IdeationPanel({
   });
 
   return (
-    <group ref={groupRef}>
+    <group ref={groupRef} visible={false}>
       <mesh>
         <boxGeometry args={[PANEL_W, PANEL_H, 0.05]} />
         <meshStandardMaterial color={PALETTE.ideationPanel} roughness={0.55} metalness={0.05} />
@@ -308,7 +318,7 @@ function IdeationPanel({
       </mesh>
 
       {/* Phase label above panel */}
-      <group position={[0, PANEL_H / 2 + 0.14, 0]}>
+      <group position={[0, PANEL_H / 2 + 0.30, 0]}>
         <Html center transform distanceFactor={4.5} style={{ pointerEvents: 'none' }}>
           <div ref={labelRef} style={{
             opacity: 0,
@@ -324,7 +334,7 @@ function IdeationPanel({
 
       {/* Token/time counter below panel (only when data is available) */}
       {showCounter && (
-        <group position={[0, -PANEL_H / 2 - 0.50, 0]}>
+        <group position={[0, -PANEL_H / 2 - 0.40, 0]}>
           <Html center transform distanceFactor={5} style={{ pointerEvents: 'none' }}>
             <div ref={counterRef} style={{
               opacity: 0, textAlign: 'center',

@@ -14,23 +14,38 @@ export default function TechReveal() {
 
   const { scrollYProgress } = useScroll({
     target: containerRef,
-    offset: ['start end', 'start start'],
+    // 'start start' → tracking begins once the section top reaches the viewport top
+    // (user has fully scrolled past Trinity). 'end start' → ends when section bottom
+    // reaches viewport top. Total range = container height = 200vh.
+    offset: ['start start', 'end start'],
   });
 
-  const flashOpacity = useTransform(scrollYProgress, [0.04, 0.07, 0.14], [0, 1, 0]);
-  const sceneOpacity = useTransform(scrollYProgress, [0.38, 0.50], [0, 1]);
-  const claimOpacity = useTransform(scrollYProgress, [0.12, 0.20], [0, 1]);
-  const claimY       = useTransform(scrollYProgress, [0.20, 0.36], ['40vh', '0vh']);
-  const subOpacity   = useTransform(scrollYProgress, [0.16, 0.26], [0, 1]);
+  // ─── Scroll stages — adjust these numbers to shift timing ───────────────────
+  // Each stage is [start, end] as a fraction of the 200vh scroll window.
+  // 0.01 = ~2vh of scroll, 0.50 = ~100vh. Sticky phase lasts ~0–0.50 (100vh).
+  // Stages must run in order: text → bg+subtext → phone → text moves up.
+  // IMPORTANT: keep STAGE.phoneIn[0] in sync with INTRO_START in PhoneScene.tsx.
+  const STAGE = {
+    bgFade:    [0.10, 0.26] as const,  // white → parchment
+    subtextIn: [0.12, 0.24] as const,  // subtext appears alongside bg fade
+    phoneIn:   [0.28, 0.40] as const,  // 3D canvas fades in (subtext done at 0.24)
+    textUp:    [0.28, 0.46] as const,  // text drifts up as phone arrives
+  };
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  // claimOpacity removed — text is visible from the start so the section never looks empty
+  const blueprintOpacity = useTransform(scrollYProgress, [...STAGE.bgFade],    [0, 1]);
+  const subOpacity       = useTransform(scrollYProgress, [...STAGE.subtextIn], [0, 1]);
+  const sceneOpacity     = useTransform(scrollYProgress, [...STAGE.phoneIn],   [0, 1]);
+  const claimY           = useTransform(scrollYProgress, [...STAGE.textUp],    ['0vh', '-30vh']);
 
   return (
-    // 160vh: ~100vh scroll tracking + 60vh sticky breathing room
-    <div ref={containerRef} style={{ height: '160vh' }}>
+    <div ref={containerRef} style={{ height: '200vh' }}>{/* 200vh = 100vh sticky + 100vh scroll-away */}
       <div className="sticky top-0 h-screen overflow-hidden" style={{ isolation: 'isolate' }}>
-        {/* White overexposure flash */}
+        {/* Blueprint background — fades in over the white page background */}
         <motion.div
-          className="absolute inset-0 z-20 pointer-events-none bg-white"
-          style={{ opacity: flashOpacity }}
+          className="absolute inset-0 z-0 pointer-events-none bg-parchment engineering-layer"
+          style={{ opacity: blueprintOpacity }}
         />
 
         {/* 3D canvas */}
@@ -39,8 +54,8 @@ export default function TechReveal() {
         </motion.div>
 
         {/* Claim overlay — starts centered, floats to top above 3D scene */}
-        <div className="absolute inset-0 z-10 flex flex-col items-center justify-start pt-[10vh] pointer-events-none px-6 text-center">
-          <motion.div style={{ opacity: claimOpacity, y: claimY }}>
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center pointer-events-none px-6 text-center">
+          <motion.div style={{ y: claimY }}>
             <h2 className="font-sans font-light text-gray-900 text-5xl md:text-7xl lg:text-8xl leading-[1.05]">
               Substanz statt Hype.
             </h2>
