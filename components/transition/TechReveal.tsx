@@ -3,18 +3,15 @@
 import { useRef } from 'react';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import dynamic from 'next/dynamic';
-import { type LayerData } from '@/lib/parseTokenUsage';
 
 const PhoneScene = dynamic(() => import('./PhoneScene'), {
   ssr: false,
   loading: () => <div className="w-full h-full" />,
 });
 
-export default function TechReveal({ layers }: { layers: LayerData[] }) {
+export default function TechReveal() {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // 0 → 1 as the section top travels from viewport bottom to viewport top (≈ 100vh of scroll).
-  // After that the sticky inner div holds the scene in place for the remaining section height.
   const { scrollYProgress } = useScroll({
     target: containerRef,
     offset: ['start end', 'start start'],
@@ -27,8 +24,8 @@ export default function TechReveal({ layers }: { layers: LayerData[] }) {
   const subOpacity   = useTransform(scrollYProgress, [0.16, 0.26], [0, 1]);
 
   return (
-    // 250vh: ~100vh for scroll-driven reveal + ~150vh of sticky interaction time
-    <div ref={containerRef} style={{ height: '250vh' }}>
+    // 160vh: ~100vh scroll tracking + 60vh sticky breathing room
+    <div ref={containerRef} style={{ height: '160vh' }}>
       <div className="sticky top-0 h-screen overflow-hidden" style={{ isolation: 'isolate' }}>
         {/* White overexposure flash */}
         <motion.div
@@ -38,7 +35,7 @@ export default function TechReveal({ layers }: { layers: LayerData[] }) {
 
         {/* 3D canvas */}
         <motion.div className="w-full h-full" style={{ opacity: sceneOpacity }}>
-          <PhoneScene scrollYProgress={scrollYProgress} layers={layers} />
+          <PhoneScene scrollYProgress={scrollYProgress} />
         </motion.div>
 
         {/* Claim overlay — starts centered, floats to top above 3D scene */}

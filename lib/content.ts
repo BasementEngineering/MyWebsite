@@ -11,7 +11,7 @@ export const content = {
   },
   kontakt: {
     intro: 'Oder kontaktieren Sie mich persönlich.',
-    email: 'jan.kettler@seedhouse.de',
+    email: 'contact@jankettler.info',
     links: [
       { label: 'LinkedIn', href: '#' },
       { label: 'GitHub', href: '#' },
@@ -48,9 +48,9 @@ export const content = {
           '/images/Speaker/PitchSCH.jpg',
           '/images/Speaker/PitchHackathon.jpg',
         ],
+        cta: { label: 'Mich buchen', href: 'mailto:contact@jankettler.info' },
       },
     ],
-    cta: { label: 'Talk anfragen', href: 'mailto:jan.kettler@seedhouse.de' },
   },
   speaker: {
     eyebrow: 'Öffentliche Auftritte',

@@ -5,136 +5,192 @@ import { Html, RoundedBox, Line } from '@react-three/drei';
 import { useRef, useState, useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import { type MotionValue, useMotionValueEvent } from 'framer-motion';
-import { type LayerData } from '@/lib/parseTokenUsage';
 
-// ─── Scene constants ──────────────────────────────────────────────────────────
-const PHONE_SCALE = 0.55;
-const PHONE_ROT_Y = -0.18;
-const PHONE_ROT_X = 0.06;
+// ╔══════════════════════════════════════════════════════════════════════════════╗
+// ║  SCENE CONFIG — edit these three blocks to change content, colors, timing  ║
+// ╚══════════════════════════════════════════════════════════════════════════════╝
 
-const CAM_START = new THREE.Vector3(0, 0, 2.2);
-const CAM_END   = new THREE.Vector3(0, 0.8, 10.5);
-
-const INTRO_START = 0.38;
-const INTRO_END   = 0.56;
-
-const PANEL_STARTS = [0.57, 0.63, 0.69] as const;
-const PANEL_ENDS   = [0.65, 0.71, 0.77] as const;
-
-const PANEL_W       = 0.7;
-const PANEL_H       = 1.5;
-const PANEL_FINAL_X = [-3.8, -2.5, -1.2] as const;
-const PANEL_SCREENSHOTS: (string | null)[] = [
-  null,
-  '/images/FirstPrototype.jpg',
-  '/images/phone-screenshot.jpg',
+// ─── Ideation phases (left side) ─────────────────────────────────────────────
+// tokens/minutes = 0 → counter is hidden for that phase
+const IDEATION_PHASES = [
+  { label: 'Konzeption',                     screenshot: null,                            tokens: 18_000, minutes: 164 },
+  { label: 'Erster Prototyp',                screenshot: '/images/FirstPrototype.jpg',    tokens: 35_782, minutes: 12},
+  { label: 'Live-3D Grafik',                 screenshot: '/images/phone-screenshot.jpg',  tokens: 79_921, minutes:  92 },
+  { label: 'Live-KI-Integration',            screenshot: null,                            tokens: 50_431, minutes:  156},
+  { label: 'Fehlerbehebung & Finalisierung', screenshot: null,                            tokens: 265_723, minutes:   439 },
 ];
 
-const STACK_FINAL_X = 2.7;
-const CUBE_W        = 1.4;
-const CUBE_H        = 1.2;
-const CUBE_D        = 0.9;
-const LAYER_W       = 1.1;
-const LAYER_H       = 0.20;
-const LAYER_D       = 0.7;
-const layerY        = (i: number) => 0.32 - i * 0.32;
-
-const DEPLOY_LAYERS = [
-  { label: 'Node JS', color: '#a8b888' },
-  { label: 'Docker',  color: '#8898b8' },
-  { label: 'Coolify', color: '#c49870' },
-] as const;
-const DEPLOY_MINUTES = 268;
-const DEPLOY_TOKENS  = 34000;
-
-const AZURE_CENTER_Y = 1.9;
-const AZURE_BOX_W    = 1.4;
-const AZURE_BOX_H    = 0.9;
-const AZURE_BOX_D    = 0.8;
-const AZURE_SLAB_W   = 1.1;
-const AZURE_SLAB_H   = 0.20;
-const AZURE_SLAB_D   = 0.6;
-const azureSlabY     = (i: number) => 0.15 - i * 0.30;
-
-const AZURE_LAYERS = [
-  { label: 'AI Foundry', sublabel: 'Phi-4-mini-instruct', color: '#a088c8' },
-  { label: 'AI Search',  sublabel: '',                     color: '#60a8c0' },
+// ─── Backend stacks (right side) ─────────────────────────────────────────────
+const VPS_LAYERS = ['Node JS', 'Docker', 'Coolify'] as const;
+const CLOUD_LAYERS = [
+  { label: 'AI Foundry', sublabel: 'Phi-4-mini-instruct' },
+  { label: 'AI Search',  sublabel: '' },
 ] as const;
 
-const VPS_FINAL_Y = -0.9;
+// ─── Color palette ────────────────────────────────────────────────────────────
+const PALETTE = {
+  // Ideation
+  ideationPanel:  '#e8c878',
+  // Backend — VPS (Node JS i=0, Docker i=1, Coolify i=2)
+  vpsBox:         '#c8d4ff',
+  vpsEdges:       '#8899cc',
+  vpsLayers:      ['#FCDE9C', '#FFA552', '#BA5624'] as string[],
+  // Backend — Cloud (AI Foundry i=0, AI Search i=1)
+  cloudBox:       '#c8d4ff',
+  cloudEdges:     '#8899cc',
+  cloudLayers:    ['#607bd1', '#60a8c0'] as string[],
+  // Shared
+  arrow:          '#aaaaaa',
+  connector:      '#aaaaaa',
+  label:          '#1a1a1a',
+  labelMuted:     'rgba(0,0,0,0.5)',
+};
 
-// ─── Click-to-focus presets [camX, camY, camZ, lookX, lookY, lookZ] ──────────
-type FocusPreset = readonly [number, number, number, number, number, number];
+// ─── Animation timeline (all times in ms from auto-play start) ────────────────
+// Change a delay to shift when something appears.
+// Change a duration to make it move faster or slower.
+const TL = {
+  // ── Ideation (left panels + arrow) ──────────────────────────────────────────
+  ideation: {
+    // Panels overlap: each starts 350 ms after previous (duration is 900 ms)
+    panels: [
+      { delay:    0, duration: 900 },
+      { delay:  350, duration: 900 },
+      { delay:  700, duration: 900 },
+      { delay: 1050, duration: 900 },
+      { delay: 1400, duration: 900 },
+    ] as const,
+    arrow: { delay: 0, duration: 700 },
+  },
 
-const PHONE_FOCUS: FocusPreset  = [0, 0.1, 2.5, 0, 0, 0];
-const PANEL_FOCUS: FocusPreset[] = [
-  [-3.8, 0, 2.0, -3.8, 0, 0],
-  [-2.5, 0, 2.0, -2.5, 0, 0],
-  [-1.2, 0, 2.0, -1.2, 0, 0],
-];
-const VPS_FOCUS: FocusPreset   = [2.7, VPS_FINAL_Y, 2.5, 2.7, VPS_FINAL_Y, 0];
-const AZURE_FOCUS: FocusPreset = [2.7, AZURE_CENTER_Y, 2.0, 2.7, AZURE_CENTER_Y, 0];
+  // ── Backend (right stacks) ───────────────────────────────────────────────
+  backend: {
+    vps: {
+      flyIn:  { delay: 3000, duration: 700 },
+      cube:   { delay: 3300, duration: 600 },
+      // Layers indexed same as VPS_LAYERS. Coolify (i=2) appears first (bottom→top).
+      layers: [
+        { delay: 4500, duration: 500 },   // i=0  Node JS  (top,    last)
+        { delay: 4100, duration: 500 },   // i=1  Docker   (middle)
+        { delay: 3700, duration: 500 },   // i=2  Coolify  (bottom, first)
+      ] as const,
+      vpsMove: { delay: 5000, duration: 700 },
+    },
+    cloud: {
+      flyIn:  { delay: 5200, duration: 700 },
+      cube:   { delay: 5500, duration: 600 },
+      // AI Search (i=1) appears before AI Foundry (i=0)
+      layers: [
+        { delay: 6300, duration: 500 },   // i=0  AI Foundry (last)
+        { delay: 5900, duration: 500 },   // i=1  AI Search  (first)
+      ] as const,
+    },
+  },
 
-// ─── Utilities ────────────────────────────────────────────────────────────────
-const clamp    = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
-const t01      = (v: number, a: number, b: number)   => clamp((v - a) / (b - a), 0, 1);
-const lerp     = (a: number, b: number, t: number)   => a + (b - a) * t;
-const easeOut3 = (t: number) => 1 - Math.pow(1 - t, 3);
+  // ── Connectors ───────────────────────────────────────────────────────────
+  connectors: {
+    phoneToVps:  { delay: 3000 },   // dashed line: phone center → VPS box
+    vpsToCloud:  { delay: 5500 },   // dashed line: VPS top → Cloud bottom
+  },
+
+  // ── Bottom labels ────────────────────────────────────────────────────────
+  labels: {
+    left:  { delay:    0 },   // "Die Entwicklungsgeschichte"
+    right: { delay: 3000 },   // "Das Hintergrundsystem"
+  },
+};
+
+// ╔══════════════════════════════════════════════════════════════════════════════╗
+// ║  GEOMETRY CONSTANTS — change these to resize/reposition scene elements     ║
+// ╚══════════════════════════════════════════════════════════════════════════════╝
+
+const PHONE_SCALE    = 0.55;
+const PHONE_ROT_Y    = -0.18;
+const PHONE_ROT_X    =  0.06;
+
+const CAM_START      = new THREE.Vector3(0, 0, 2.2);
+const CAM_END        = new THREE.Vector3(0, 0.8, 10.5);
+const INTRO_START    = 0.38;
+const INTRO_END      = 0.56;
+
+// Ideation panels
+const PANEL_W        = 0.7;
+const PANEL_H        = 1.5;
+const PANEL_SPACING  = 1.2;  // horizontal gap between panel centers
+const PANEL_ANCHOR_X = -1.4; // x of the rightmost panel (closest to phone)
+const PANEL_FINAL_X  = IDEATION_PHASES.map(
+  (_, i) => PANEL_ANCHOR_X - (IDEATION_PHASES.length - 1 - i) * PANEL_SPACING
+);
+
+// Backend — VPS box
+const STACK_FINAL_X  = 2.7;
+const VPS_W          = 1.4;
+const VPS_H          = 1.2;
+const VPS_D          = 0.9;
+const VPS_LAYER_W    = 1.1;
+const VPS_LAYER_H    = 0.20;
+const VPS_LAYER_D    = 0.7;
+const vpsLayerY      = (i: number) => 0.32 - i * 0.32;
+const VPS_FINAL_Y    = -0.5;
+
+// Backend — Cloud box
+const CLOUD_CENTER_Y = 1.3;
+const CLOUD_W        = 1.4;
+const CLOUD_H        = 0.9;
+const CLOUD_D        = 0.8;
+const CLOUD_SLAB_W   = 1.1;
+const CLOUD_SLAB_H   = 0.20;
+const CLOUD_SLAB_D   = 0.6;
+const cloudSlabY     = (i: number) => 0.15 - i * 0.30;
+
+// ╔══════════════════════════════════════════════════════════════════════════════╗
+// ║  INTERNALS — no need to edit below this line for typical changes           ║
+// ╚══════════════════════════════════════════════════════════════════════════════╝
+
+const clamp     = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
+const t01       = (v: number, a: number, b: number)   => clamp((v - a) / (b - a), 0, 1);
+const lerp      = (a: number, b: number, t: number)   => a + (b - a) * t;
+const easeOut3  = (t: number) => 1 - Math.pow(1 - t, 3);
 const easeInOut = (t: number) => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
 
-function useCountUp(target: number, duration: number, active: boolean) {
+const getElapsed = (autoStart: number | null): number =>
+  autoStart === null ? -1 : performance.now() - autoStart;
+
+const phaseT = (elapsed: number, delay: number, duration: number): number =>
+  easeOut3(clamp((elapsed - delay) / duration, 0, 1));
+
+function useCountUp(target: number, durationSec: number, active: boolean) {
   const [value, setValue] = useState(0);
   useEffect(() => {
     if (!active) return;
     let raf: number;
     const start = performance.now();
     const tick = (now: number) => {
-      const elapsed = Math.min((now - start) / (duration * 1000), 1);
-      setValue(Math.round(easeOut3(elapsed) * target));
-      if (elapsed < 1) raf = requestAnimationFrame(tick);
+      const t = Math.min((now - start) / (durationSec * 1000), 1);
+      setValue(Math.round(easeOut3(t) * target));
+      if (t < 1) raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [active, target, duration]);
+  }, [active, target, durationSec]);
   return value;
 }
 
-// ─── Camera animation ─────────────────────────────────────────────────────────
-// Scroll-driven by default; smoothly flies to focusRef target on click.
-function CameraAnimation({
-  scrollRef,
-  focusRef,
-}: {
-  scrollRef: React.MutableRefObject<number>;
-  focusRef: React.MutableRefObject<FocusPreset | null>;
-}) {
+// ─── Camera — scroll-driven intro ────────────────────────────────────────────
+function Camera({ scrollRef }: { scrollRef: React.MutableRefObject<number> }) {
   const { camera } = useThree();
-  const targetPos  = useMemo(() => new THREE.Vector3(), []);
-
+  const target = useMemo(() => new THREE.Vector3(), []);
   useFrame(() => {
-    const focus = focusRef.current;
-    if (focus) {
-      targetPos.set(focus[0], focus[1], focus[2]);
-      camera.position.lerp(targetPos, 0.07);
-      camera.lookAt(focus[3], focus[4], focus[5]);
-    } else {
-      const t = easeInOut(t01(scrollRef.current, INTRO_START, INTRO_END));
-      targetPos.lerpVectors(CAM_START, CAM_END, t);
-      camera.position.lerp(targetPos, 0.12);
-      camera.lookAt(0, 0, 0);
-    }
+    const t = easeInOut(t01(scrollRef.current, INTRO_START, INTRO_END));
+    target.lerpVectors(CAM_START, CAM_END, t);
+    camera.position.lerp(target, 0.12);
+    camera.lookAt(0, 0, 0);
   });
   return null;
 }
 
-// ─── Phone ────────────────────────────────────────────────────────────────────
-function Phone({
-  scrollRef,
-  onFocus,
-}: {
-  scrollRef: React.MutableRefObject<number>;
-  onFocus: () => void;
-}) {
+// ─── Phone — scroll-driven intro ─────────────────────────────────────────────
+function Phone({ scrollRef }: { scrollRef: React.MutableRefObject<number> }) {
   const groupRef     = useRef<THREE.Group>(null);
   const screenMatRef = useRef<THREE.MeshBasicMaterial>(null);
   const [hasScreenshot, setHasScreenshot] = useState(false);
@@ -159,13 +215,7 @@ function Phone({
   });
 
   return (
-    <group
-      ref={groupRef}
-      scale={PHONE_SCALE}
-      onClick={(e) => { e.stopPropagation(); onFocus(); }}
-      onPointerOver={(e) => { e.stopPropagation(); document.body.style.cursor = 'pointer'; }}
-      onPointerOut={() => { document.body.style.cursor = 'auto'; }}
-    >
+    <group ref={groupRef} scale={PHONE_SCALE}>
       <RoundedBox args={[1.42, 3.04, 0.14]} radius={0.1} smoothness={4}>
         <meshStandardMaterial color="#111111" roughness={0.28} metalness={0.7} />
       </RoundedBox>
@@ -192,32 +242,33 @@ function Phone({
   );
 }
 
-// ─── Phase panel (flies left) ─────────────────────────────────────────────────
-function PhasePanel({
-  scrollRef,
-  data,
-  index,
-  finalX,
-  onFocus,
+// ─── IdeationPanel — one phase card that flies in from left ──────────────────
+function IdeationPanel({
+  autoPlayRef, phase, index, finalX,
 }: {
-  scrollRef: React.MutableRefObject<number>;
-  data: LayerData;
-  index: number;
-  finalX: number;
-  onFocus: () => void;
+  autoPlayRef: React.MutableRefObject<number | null>;
+  phase:       typeof IDEATION_PHASES[number];
+  index:       number;
+  finalX:      number;
 }) {
   const groupRef     = useRef<THREE.Group>(null);
   const screenMatRef = useRef<THREE.MeshBasicMaterial>(null);
-  const aboveRef     = useRef<HTMLDivElement>(null);
-  const belowRef     = useRef<HTMLDivElement>(null);
+  const labelRef     = useRef<HTMLDivElement>(null);
+  const counterRef   = useRef<HTMLDivElement>(null);
   const triggered    = useRef(false);
   const [countActive, setCountActive] = useState(false);
 
-  const screenshotPath = PANEL_SCREENSHOTS[index] ?? null;
+  const { delay, duration } = TL.ideation.panels[index] ?? { delay: 0, duration: 900 };
+  const showCounter = phase.tokens > 0;
+
+  const tokenCount  = useCountUp(phase.tokens,  3.0, countActive);
+  const minuteCount = useCountUp(phase.minutes, 3.0, countActive);
+  const hh = Math.floor(minuteCount / 60);
+  const mm = String(minuteCount % 60).padStart(2, '0');
 
   useEffect(() => {
-    if (!screenshotPath) return;
-    new THREE.TextureLoader().load(screenshotPath, (tex) => {
+    if (!phase.screenshot) return;
+    new THREE.TextureLoader().load(phase.screenshot, (tex) => {
       tex.colorSpace = THREE.SRGBColorSpace;
       if (screenMatRef.current) {
         screenMatRef.current.map = tex;
@@ -225,396 +276,306 @@ function PhasePanel({
         screenMatRef.current.needsUpdate = true;
       }
     }, undefined, () => {});
-  }, [screenshotPath]);
-
-  const start = PANEL_STARTS[index] ?? 0.57;
-  const end   = PANEL_ENDS[index]   ?? 0.79;
+  }, [phase.screenshot]);
 
   useFrame(() => {
     if (!groupRef.current) return;
-    const t    = easeOut3(t01(scrollRef.current, start, end));
-    const rotT = easeInOut(t01(scrollRef.current, INTRO_START, INTRO_END));
+    const elapsed = getElapsed(autoPlayRef.current);
+    const t = phaseT(elapsed, delay, duration);
     groupRef.current.position.x = lerp(0, finalX, t);
-    groupRef.current.rotation.y = lerp(0, PHONE_ROT_Y, rotT);
+    groupRef.current.rotation.y = PHONE_ROT_Y;
     groupRef.current.rotation.x = PHONE_ROT_X;
-    const op = String(clamp(t01(t, 0.25, 0.65), 0, 1));
-    if (aboveRef.current) aboveRef.current.style.opacity = op;
-    if (belowRef.current) belowRef.current.style.opacity = op;
-    if (t > 0.05 && !triggered.current) { triggered.current = true; setCountActive(true); }
+
+    const textOp = String(clamp(t01(t, 0.4, 0.9), 0, 1));
+    if (labelRef.current)   labelRef.current.style.opacity   = textOp;
+    if (counterRef.current) counterRef.current.style.opacity = textOp;
+
+    if (showCounter && !triggered.current && t > 0.7) {
+      triggered.current = true;
+      setCountActive(true);
+    }
   });
 
-  const minutes = useCountUp(data.durationMinutes, 3.0, countActive);
-  const tokens  = useCountUp(data.tokens, 3.0, countActive);
-  const hh = Math.floor(minutes / 60);
-  const mm = String(minutes % 60).padStart(2, '0');
-
   return (
-    <group
-      ref={groupRef}
-      onClick={(e) => { e.stopPropagation(); onFocus(); }}
-      onPointerOver={(e) => { e.stopPropagation(); document.body.style.cursor = 'pointer'; }}
-      onPointerOut={() => { document.body.style.cursor = 'auto'; }}
-    >
+    <group ref={groupRef}>
       <mesh>
         <boxGeometry args={[PANEL_W, PANEL_H, 0.05]} />
-        <meshStandardMaterial color="#e8c878" roughness={0.55} metalness={0.05} />
+        <meshStandardMaterial color={PALETTE.ideationPanel} roughness={0.55} metalness={0.05} />
       </mesh>
       <mesh position={[0, 0, 0.026]}>
         <planeGeometry args={[PANEL_W, PANEL_H]} />
-        <meshBasicMaterial ref={screenMatRef} color="#e8c878" />
+        <meshBasicMaterial ref={screenMatRef} color={PALETTE.ideationPanel} />
       </mesh>
 
+      {/* Phase label above panel */}
       <group position={[0, PANEL_H / 2 + 0.14, 0]}>
-        <Html center style={{ pointerEvents: 'none' }}>
-          <div ref={aboveRef} style={{
+        <Html center transform distanceFactor={4.5} style={{ pointerEvents: 'none' }}>
+          <div ref={labelRef} style={{
             opacity: 0,
-            whiteSpace: 'nowrap',
             fontFamily: 'var(--font-jetbrains-mono, "JetBrains Mono", monospace)',
-            fontSize: 11,
-            fontWeight: 600,
-            color: '#1a1a1a',
-            letterSpacing: '0.03em',
+            fontSize: 10, fontWeight: 600,
+            color: PALETTE.label, letterSpacing: '0.03em',
+            textAlign: 'center', maxWidth: 100, lineHeight: 1.4,
           }}>
-            {data.label}
+            {phase.label}
           </div>
         </Html>
       </group>
 
-      <group position={[0, -PANEL_H / 2 - 0.25, 0]}>
-        <Html center style={{ pointerEvents: 'none' }}>
-          <div ref={belowRef} style={{
-            opacity: 0,
-            whiteSpace: 'nowrap',
-            textAlign: 'center',
-            fontFamily: 'var(--font-jetbrains-mono, "JetBrains Mono", monospace)',
-            color: 'rgba(0,0,0,0.5)',
-            lineHeight: 1.6,
-          }}>
-            <div style={{ fontSize: 11 }}>{hh}:{mm} h</div>
-            <div style={{ fontSize: 11 }}>{tokens.toLocaleString('de-DE')} Tokens</div>
-          </div>
-        </Html>
-      </group>
+      {/* Token/time counter below panel (only when data is available) */}
+      {showCounter && (
+        <group position={[0, -PANEL_H / 2 - 0.50, 0]}>
+          <Html center transform distanceFactor={5} style={{ pointerEvents: 'none' }}>
+            <div ref={counterRef} style={{
+              opacity: 0, textAlign: 'center',
+              fontFamily: 'var(--font-jetbrains-mono, "JetBrains Mono", monospace)',
+              color: PALETTE.labelMuted, lineHeight: 1.6,
+            }}>
+              <div style={{ fontSize: 11 }}>{hh}:{mm} h</div>
+              <div style={{ fontSize: 11 }}>{tokenCount.toLocaleString('de-DE')} Tokens</div>
+            </div>
+          </Html>
+        </group>
+      )}
     </group>
   );
 }
 
-// ─── Deployment cube (flies right) ────────────────────────────────────────────
-function DeploymentStack({
-  scrollRef,
-  onFocus,
-}: {
-  scrollRef: React.MutableRefObject<number>;
-  onFocus: () => void;
-}) {
-  const groupRef         = useRef<THREE.Group>(null);
-  const cubeMatRef       = useRef<THREE.MeshStandardMaterial>(null);
-  const edgesMatRef      = useRef<THREE.LineBasicMaterial>(null);
-  const slabMatRefs      = useRef<(THREE.MeshStandardMaterial | null)[]>([]);
-  const lineGroupRefs    = useRef<(THREE.Group | null)[]>([]);
-  const calloutLineRef   = useRef<THREE.Group>(null);
-  const titleRef         = useRef<HTMLDivElement>(null);
-  const vpsLabelRef      = useRef<HTMLDivElement>(null);
-  const belowRef         = useRef<HTMLDivElement>(null);
-  const labelsRef        = useRef<(HTMLDivElement | null)[]>([]);
-  const triggered        = useRef(false);
-  const [countActive, setCountActive] = useState(false);
+// ─── IdeationArrow — flat arrow behind the phase panels, pointing at phone ───
+const ARROW_TAIL_X = PANEL_FINAL_X[0] - PANEL_W / 2 - 0.05;
+const ARROW_TIP_X  = -0.42; // just before phone left edge
+const ARROW_LEN    = ARROW_TIP_X - ARROW_TAIL_X;
+const ARROW_SHAFT_H = 0.10;
+const ARROW_HEAD_H  = 0.28;
+const ARROW_HEAD_L  = 0.45;
+
+const arrowShape = (() => {
+  const s = new THREE.Shape();
+  s.moveTo(0,           ARROW_SHAFT_H / 2);
+  s.lineTo(ARROW_LEN - ARROW_HEAD_L, ARROW_SHAFT_H / 2);
+  s.lineTo(ARROW_LEN - ARROW_HEAD_L, ARROW_HEAD_H / 2);
+  s.lineTo(ARROW_LEN,  0);
+  s.lineTo(ARROW_LEN - ARROW_HEAD_L, -ARROW_HEAD_H / 2);
+  s.lineTo(ARROW_LEN - ARROW_HEAD_L, -ARROW_SHAFT_H / 2);
+  s.lineTo(0,          -ARROW_SHAFT_H / 2);
+  s.closePath();
+  return s;
+})();
+
+function IdeationArrow({ autoPlayRef }: { autoPlayRef: React.MutableRefObject<number | null> }) {
+  const meshRef = useRef<THREE.Mesh>(null);
+
+  useFrame(() => {
+    const elapsed = getElapsed(autoPlayRef.current);
+    const op = phaseT(elapsed, TL.ideation.arrow.delay, TL.ideation.arrow.duration) * 0.18;
+    if (meshRef.current) (meshRef.current.material as THREE.MeshStandardMaterial).opacity = op;
+  });
+
+  return (
+    // y=0 → vertically centered on panels; z=-0.08 → behind panel boxes (z≈0)
+    <group position={[ARROW_TAIL_X, 0, -0.08]} rotation={[PHONE_ROT_X, 0, 0]}>
+      <mesh ref={meshRef} renderOrder={0}>
+        <shapeGeometry args={[arrowShape]} />
+        <meshStandardMaterial color={PALETTE.arrow} transparent opacity={0} depthWrite={false} side={THREE.DoubleSide} />
+      </mesh>
+    </group>
+  );
+}
+
+// ─── BackendVps — wireframe deployment box with layer slabs ──────────────────
+function BackendVps({ autoPlayRef }: { autoPlayRef: React.MutableRefObject<number | null> }) {
+  const groupRef      = useRef<THREE.Group>(null);
+  const cubeMatRef    = useRef<THREE.MeshStandardMaterial>(null);
+  const edgesMatRef   = useRef<THREE.LineBasicMaterial>(null);
+  const slabMatRefs   = useRef<(THREE.MeshStandardMaterial | null)[]>([]);
+  const lineGroupRefs = useRef<(THREE.Group | null)[]>([]);
+  const calloutRef    = useRef<THREE.Group>(null);
+  const titleRef      = useRef<HTMLDivElement>(null);
+  const vpsLabelRef   = useRef<HTMLDivElement>(null);
+  const layerLabelRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   const edgesGeo = useMemo(
-    () => new THREE.EdgesGeometry(new THREE.BoxGeometry(CUBE_W, CUBE_H, CUBE_D)),
-    []
+    () => new THREE.EdgesGeometry(new THREE.BoxGeometry(VPS_W, VPS_H, VPS_D)), []
   );
-
-  const LAYER_IN  = [0.90, 0.88, 0.86] as const;
-  const LAYER_OUT = [0.94, 0.92, 0.90] as const;
 
   useFrame(() => {
     if (!groupRef.current) return;
-    const s = scrollRef.current;
+    const elapsed = getElapsed(autoPlayRef.current);
 
-    const t    = easeOut3(t01(s, 0.81, 0.86));
-    const rotT = easeInOut(t01(s, INTRO_START, INTRO_END));
-    groupRef.current.position.x = lerp(0, STACK_FINAL_X, t);
-    groupRef.current.position.y = lerp(0, VPS_FINAL_Y, easeOut3(t01(s, 0.95, 0.99)));
-    groupRef.current.rotation.y = lerp(0, PHONE_ROT_Y, rotT);
+    const flyT  = phaseT(elapsed, TL.backend.vps.flyIn.delay,  TL.backend.vps.flyIn.duration);
+    const cubeT = phaseT(elapsed, TL.backend.vps.cube.delay,   TL.backend.vps.cube.duration);
+    const vpsT  = phaseT(elapsed, TL.backend.vps.vpsMove.delay, TL.backend.vps.vpsMove.duration);
+
+    groupRef.current.position.x = lerp(0, STACK_FINAL_X, flyT);
+    groupRef.current.position.y = lerp(0, VPS_FINAL_Y,   vpsT);
+    groupRef.current.rotation.y = PHONE_ROT_Y;
     groupRef.current.rotation.x = PHONE_ROT_X;
 
-    const cubeT = clamp(t01(s, 0.84, 0.88), 0, 1);
-    if (cubeMatRef.current)     cubeMatRef.current.opacity  = lerp(0, 0.07, cubeT);
-    if (edgesMatRef.current)    edgesMatRef.current.opacity = lerp(0, 0.5,  cubeT);
-    if (calloutLineRef.current) calloutLineRef.current.visible = cubeT > 0;
-    if (titleRef.current)       titleRef.current.style.opacity    = String(cubeT);
-    if (vpsLabelRef.current)    vpsLabelRef.current.style.opacity = String(cubeT);
+    if (cubeMatRef.current)  cubeMatRef.current.opacity  = lerp(0, 0.07, cubeT);
+    if (edgesMatRef.current) edgesMatRef.current.opacity = lerp(0, 0.5,  cubeT);
+    if (calloutRef.current)  calloutRef.current.visible  = cubeT > 0;
+    if (titleRef.current)    titleRef.current.style.opacity    = String(cubeT);
+    if (vpsLabelRef.current) vpsLabelRef.current.style.opacity = String(cubeT);
 
-    DEPLOY_LAYERS.forEach((_, i) => {
-      const lt = clamp(t01(s, LAYER_IN[i], LAYER_OUT[i]), 0, 1);
-      const mat = slabMatRefs.current[i];
-      if (mat) mat.opacity = lt;
-      const lineGrp = lineGroupRefs.current[i];
-      if (lineGrp) lineGrp.visible = lt > 0;
-      const lbl = labelsRef.current[i];
-      if (lbl) lbl.style.opacity = String(lt);
+    VPS_LAYERS.forEach((_, i) => {
+      const { delay, duration } = TL.backend.vps.layers[i];
+      const lt  = phaseT(elapsed, delay, duration);
+      const mat = slabMatRefs.current[i];    if (mat)  mat.opacity    = lt;
+      const grp = lineGroupRefs.current[i];  if (grp)  grp.visible    = lt > 0;
+      const lbl = layerLabelRefs.current[i]; if (lbl)  lbl.style.opacity = String(lt);
     });
-
-    const lastT = clamp(t01(s, LAYER_IN[0], LAYER_OUT[0]), 0, 1);
-    if (belowRef.current) belowRef.current.style.opacity = String(lastT);
-
-    if (s > LAYER_IN[2] && !triggered.current) { triggered.current = true; setCountActive(true); }
   });
 
-  const deployMinutes = useCountUp(DEPLOY_MINUTES, 3.0, countActive);
-  const deployTokens  = useCountUp(DEPLOY_TOKENS,  3.0, countActive);
-  const hh = Math.floor(deployMinutes / 60);
-  const mm = String(deployMinutes % 60).padStart(2, '0');
-
   return (
-    <group
-      ref={groupRef}
-      onClick={(e) => { e.stopPropagation(); onFocus(); }}
-      onPointerOver={(e) => { e.stopPropagation(); document.body.style.cursor = 'pointer'; }}
-      onPointerOut={() => { document.body.style.cursor = 'auto'; }}
-    >
-      <group position={[0, CUBE_H / 2 + 0.18, 0]}>
+    <group ref={groupRef}>
+      <group position={[0, VPS_H / 2 + 0.18, 0]}>
         <Html center style={{ pointerEvents: 'none' }}>
           <div ref={titleRef} style={{
-            opacity: 0,
-            whiteSpace: 'nowrap',
+            opacity: 0, whiteSpace: 'nowrap',
             fontFamily: 'var(--font-jetbrains-mono, "JetBrains Mono", monospace)',
-            fontSize: 11, fontWeight: 600, color: '#1a1a1a', letterSpacing: '0.03em',
-          }}>
-            Deployment
-          </div>
+            fontSize: 11, fontWeight: 600, color: PALETTE.label, letterSpacing: '0.03em',
+          }}>Deployment</div>
         </Html>
       </group>
 
       <mesh renderOrder={2}>
-        <boxGeometry args={[CUBE_W, CUBE_H, CUBE_D]} />
-        <meshStandardMaterial
-          ref={cubeMatRef}
-          color="#c8d4ff"
-          transparent
-          opacity={0}
-          side={THREE.DoubleSide}
-          depthWrite={false}
-        />
+        <boxGeometry args={[VPS_W, VPS_H, VPS_D]} />
+        <meshStandardMaterial ref={cubeMatRef} color={PALETTE.vpsBox}
+          transparent opacity={0} side={THREE.DoubleSide} depthWrite={false} />
       </mesh>
-
       <lineSegments geometry={edgesGeo} renderOrder={3}>
-        <lineBasicMaterial ref={edgesMatRef} color="#8899cc" transparent opacity={0} />
+        <lineBasicMaterial ref={edgesMatRef} color={PALETTE.vpsEdges} transparent opacity={0} />
       </lineSegments>
 
-      <group ref={calloutLineRef} visible={false}>
+      <group ref={calloutRef} visible={false}>
         <Line
-          points={[
-            [CUBE_W / 2, -CUBE_H / 2, 0],
-            [CUBE_W / 2 + 0.45, -CUBE_H / 2 - 0.35, 0],
-          ]}
-          color="#888888"
-          lineWidth={1}
+          points={[[VPS_W/2, -VPS_H/2, 0], [VPS_W/2+0.45, -VPS_H/2-0.35, 0]]}
+          color={PALETTE.connector} lineWidth={1}
         />
-        <group position={[CUBE_W / 2 + 0.48, -CUBE_H / 2 - 0.35, 0]}>
+        <group position={[VPS_W/2+0.48, -VPS_H/2-0.35, 0]}>
           <Html style={{ pointerEvents: 'none' }}>
             <div ref={vpsLabelRef} style={{
-              opacity: 0,
-              whiteSpace: 'nowrap',
+              opacity: 0, whiteSpace: 'nowrap',
               fontFamily: 'var(--font-jetbrains-mono, "JetBrains Mono", monospace)',
-              fontSize: 11, fontWeight: 600, color: '#1a1a1a',
+              fontSize: 11, fontWeight: 600, color: PALETTE.label,
               transform: 'translateY(-50%)',
-            }}>
-              Linux VPS
-            </div>
+            }}>Linux VPS</div>
           </Html>
         </group>
       </group>
 
-      {DEPLOY_LAYERS.map((layer, i) => (
-        <group key={layer.label} position={[0, layerY(i), 0]}>
+      {VPS_LAYERS.map((label, i) => (
+        <group key={label} position={[0, vpsLayerY(i), 0]}>
           <mesh renderOrder={1}>
-            <boxGeometry args={[LAYER_W, LAYER_H, LAYER_D]} />
+            <boxGeometry args={[VPS_LAYER_W, VPS_LAYER_H, VPS_LAYER_D]} />
             <meshStandardMaterial
               ref={el => { slabMatRefs.current[i] = el; }}
-              color={layer.color}
-              transparent
-              opacity={0}
-              roughness={0.4}
-              metalness={0.1}
+              color={PALETTE.vpsLayers[i]}
+              transparent opacity={0} roughness={0.4} metalness={0.1}
             />
           </mesh>
-
           <group ref={el => { lineGroupRefs.current[i] = el; }} visible={false}>
-            <Line
-              points={[[LAYER_W / 2, 0, 0], [CUBE_W / 2 + 0.12, 0, 0]]}
-              color="#888888"
-              lineWidth={1}
-            />
+            <Line points={[[VPS_LAYER_W/2, 0, 0], [VPS_W/2+0.12, 0, 0]]} color={PALETTE.connector} lineWidth={1} />
           </group>
-
-          <group position={[CUBE_W / 2 + 0.15, 0, 0]}>
+          <group position={[VPS_W/2+0.15, 0, 0]}>
             <Html style={{ pointerEvents: 'none' }}>
-              <div
-                ref={el => { labelsRef.current[i] = el; }}
-                style={{
-                  opacity: 0,
-                  whiteSpace: 'nowrap',
-                  fontFamily: 'var(--font-jetbrains-mono, "JetBrains Mono", monospace)',
-                  fontSize: 11, fontWeight: 600, color: '#1a1a1a',
-                  transform: 'translateY(-50%)',
-                }}
-              >
-                {layer.label}
-              </div>
+              <div ref={el => { layerLabelRefs.current[i] = el; }} style={{
+                opacity: 0, whiteSpace: 'nowrap',
+                fontFamily: 'var(--font-jetbrains-mono, "JetBrains Mono", monospace)',
+                fontSize: 11, fontWeight: 600, color: PALETTE.label,
+                transform: 'translateY(-50%)',
+              }}>{label}</div>
             </Html>
           </group>
         </group>
       ))}
-
-      <group position={[0, -CUBE_H / 2 - 0.25, 0]}>
-        <Html center style={{ pointerEvents: 'none' }}>
-          <div ref={belowRef} style={{
-            opacity: 0,
-            textAlign: 'center',
-            whiteSpace: 'nowrap',
-            fontFamily: 'var(--font-jetbrains-mono, "JetBrains Mono", monospace)',
-            color: 'rgba(0,0,0,0.5)',
-            lineHeight: 1.6,
-          }}>
-            <div style={{ fontSize: 11 }}>{hh}:{mm} h</div>
-            <div style={{ fontSize: 11 }}>{deployTokens.toLocaleString('de-DE')} Tokens</div>
-          </div>
-        </Html>
-      </group>
     </group>
   );
 }
 
-// ─── Azure Cloud (above VPS) ─────────────────────────────────────────────────
-function AzureStack({
-  scrollRef,
-  onFocus,
-}: {
-  scrollRef: React.MutableRefObject<number>;
-  onFocus: () => void;
-}) {
+// ─── BackendCloud — Azure cloud box with AI service slabs ────────────────────
+function BackendCloud({ autoPlayRef }: { autoPlayRef: React.MutableRefObject<number | null> }) {
   const groupRef      = useRef<THREE.Group>(null);
   const cubeMatRef    = useRef<THREE.MeshStandardMaterial>(null);
   const edgesMatRef   = useRef<THREE.LineBasicMaterial>(null);
   const slabMatRefs   = useRef<(THREE.MeshStandardMaterial | null)[]>([]);
   const lineGroupRefs = useRef<(THREE.Group | null)[]>([]);
   const titleRef      = useRef<HTMLDivElement>(null);
-  const labelsRef     = useRef<(HTMLDivElement | null)[]>([]);
+  const layerLabelRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   const edgesGeo = useMemo(
-    () => new THREE.EdgesGeometry(new THREE.BoxGeometry(AZURE_BOX_W, AZURE_BOX_H, AZURE_BOX_D)),
-    []
+    () => new THREE.EdgesGeometry(new THREE.BoxGeometry(CLOUD_W, CLOUD_H, CLOUD_D)), []
   );
-
-  const AZURE_LAYER_IN  = [0.98, 0.96] as const;
-  const AZURE_LAYER_OUT = [1.00, 0.99] as const;
 
   useFrame(() => {
     if (!groupRef.current) return;
-    const s = scrollRef.current;
+    const elapsed = getElapsed(autoPlayRef.current);
 
-    const t    = easeOut3(t01(s, 0.95, 0.99));
-    const rotT = easeInOut(t01(s, INTRO_START, INTRO_END));
-    groupRef.current.position.x = lerp(0, STACK_FINAL_X, t);
-    groupRef.current.position.y = AZURE_CENTER_Y;
-    groupRef.current.rotation.y = lerp(0, PHONE_ROT_Y, rotT);
+    const flyT  = phaseT(elapsed, TL.backend.cloud.flyIn.delay, TL.backend.cloud.flyIn.duration);
+    const cubeT = phaseT(elapsed, TL.backend.cloud.cube.delay,  TL.backend.cloud.cube.duration);
+
+    groupRef.current.position.x = lerp(0, STACK_FINAL_X, flyT);
+    groupRef.current.position.y = CLOUD_CENTER_Y;
+    groupRef.current.rotation.y = PHONE_ROT_Y;
     groupRef.current.rotation.x = PHONE_ROT_X;
 
-    const cubeT = clamp(t01(s, 0.96, 0.99), 0, 1);
-    if (cubeMatRef.current)   cubeMatRef.current.opacity  = lerp(0, 0.07, cubeT);
-    if (edgesMatRef.current)  edgesMatRef.current.opacity = lerp(0, 0.5,  cubeT);
-    if (titleRef.current)     titleRef.current.style.opacity = String(cubeT);
+    if (cubeMatRef.current)  cubeMatRef.current.opacity  = lerp(0, 0.07, cubeT);
+    if (edgesMatRef.current) edgesMatRef.current.opacity = lerp(0, 0.5,  cubeT);
+    if (titleRef.current)    titleRef.current.style.opacity = String(cubeT);
 
-    AZURE_LAYERS.forEach((_, i) => {
-      const lt  = clamp(t01(s, AZURE_LAYER_IN[i], AZURE_LAYER_OUT[i]), 0, 1);
-      const mat = slabMatRefs.current[i];
-      if (mat) mat.opacity = lt;
-      const lineGrp = lineGroupRefs.current[i];
-      if (lineGrp) lineGrp.visible = lt > 0;
-      const lbl = labelsRef.current[i];
-      if (lbl) lbl.style.opacity = String(lt);
+    CLOUD_LAYERS.forEach((_, i) => {
+      const { delay, duration } = TL.backend.cloud.layers[i];
+      const lt  = phaseT(elapsed, delay, duration);
+      const mat = slabMatRefs.current[i];    if (mat)  mat.opacity       = lt;
+      const grp = lineGroupRefs.current[i];  if (grp)  grp.visible       = lt > 0;
+      const lbl = layerLabelRefs.current[i]; if (lbl)  lbl.style.opacity = String(lt);
     });
   });
 
   return (
-    <group
-      ref={groupRef}
-      onClick={(e) => { e.stopPropagation(); onFocus(); }}
-      onPointerOver={(e) => { e.stopPropagation(); document.body.style.cursor = 'pointer'; }}
-      onPointerOut={() => { document.body.style.cursor = 'auto'; }}
-    >
-      <group position={[0, AZURE_BOX_H / 2 + 0.18, 0]}>
+    <group ref={groupRef}>
+      <group position={[0, CLOUD_H/2 + 0.18, 0]}>
         <Html center style={{ pointerEvents: 'none' }}>
           <div ref={titleRef} style={{
-            opacity: 0,
-            whiteSpace: 'nowrap',
+            opacity: 0, whiteSpace: 'nowrap',
             fontFamily: 'var(--font-jetbrains-mono, "JetBrains Mono", monospace)',
-            fontSize: 11, fontWeight: 600, color: '#1a1a1a', letterSpacing: '0.03em',
-          }}>
-            Azure Cloud
-          </div>
+            fontSize: 11, fontWeight: 600, color: PALETTE.label, letterSpacing: '0.03em',
+          }}>Azure Cloud</div>
         </Html>
       </group>
 
       <mesh renderOrder={2}>
-        <boxGeometry args={[AZURE_BOX_W, AZURE_BOX_H, AZURE_BOX_D]} />
-        <meshStandardMaterial
-          ref={cubeMatRef}
-          color="#c8d4ff"
-          transparent
-          opacity={0}
-          side={THREE.DoubleSide}
-          depthWrite={false}
-        />
+        <boxGeometry args={[CLOUD_W, CLOUD_H, CLOUD_D]} />
+        <meshStandardMaterial ref={cubeMatRef} color={PALETTE.cloudBox}
+          transparent opacity={0} side={THREE.DoubleSide} depthWrite={false} />
       </mesh>
-
       <lineSegments geometry={edgesGeo} renderOrder={3}>
-        <lineBasicMaterial ref={edgesMatRef} color="#8899cc" transparent opacity={0} />
+        <lineBasicMaterial ref={edgesMatRef} color={PALETTE.cloudEdges} transparent opacity={0} />
       </lineSegments>
 
-      {AZURE_LAYERS.map((layer, i) => (
-        <group key={layer.label} position={[0, azureSlabY(i), 0]}>
+      {CLOUD_LAYERS.map(({ label, sublabel }, i) => (
+        <group key={label} position={[0, cloudSlabY(i), 0]}>
           <mesh renderOrder={1}>
-            <boxGeometry args={[AZURE_SLAB_W, AZURE_SLAB_H, AZURE_SLAB_D]} />
+            <boxGeometry args={[CLOUD_SLAB_W, CLOUD_SLAB_H, CLOUD_SLAB_D]} />
             <meshStandardMaterial
               ref={el => { slabMatRefs.current[i] = el; }}
-              color={layer.color}
-              transparent
-              opacity={0}
-              roughness={0.4}
-              metalness={0.1}
+              color={PALETTE.cloudLayers[i]}
+              transparent opacity={0} roughness={0.4} metalness={0.1}
             />
           </mesh>
-
           <group ref={el => { lineGroupRefs.current[i] = el; }} visible={false}>
-            <Line
-              points={[[AZURE_SLAB_W / 2, 0, 0], [AZURE_BOX_W / 2 + 0.12, 0, 0]]}
-              color="#888888"
-              lineWidth={1}
-            />
+            <Line points={[[CLOUD_SLAB_W/2, 0, 0], [CLOUD_W/2+0.12, 0, 0]]} color={PALETTE.connector} lineWidth={1} />
           </group>
-
-          <group position={[AZURE_BOX_W / 2 + 0.15, 0, 0]}>
+          <group position={[CLOUD_W/2+0.15, 0, 0]}>
             <Html style={{ pointerEvents: 'none' }}>
-              <div
-                ref={el => { labelsRef.current[i] = el; }}
-                style={{
-                  opacity: 0,
-                  whiteSpace: 'nowrap',
-                  fontFamily: 'var(--font-jetbrains-mono, "JetBrains Mono", monospace)',
-                  fontSize: 11, fontWeight: 600, color: '#1a1a1a',
-                  transform: 'translateY(-50%)',
-                  lineHeight: 1.4,
-                }}
-              >
-                {layer.label}
-                {layer.sublabel && (
-                  <div style={{ fontSize: 9, fontWeight: 400, opacity: 0.6 }}>
-                    {layer.sublabel}
-                  </div>
-                )}
+              <div ref={el => { layerLabelRefs.current[i] = el; }} style={{
+                opacity: 0, whiteSpace: 'nowrap',
+                fontFamily: 'var(--font-jetbrains-mono, "JetBrains Mono", monospace)',
+                fontSize: 11, fontWeight: 600, color: PALETTE.label,
+                transform: 'translateY(-50%)', lineHeight: 1.4,
+              }}>
+                {label}
+                {sublabel && <div style={{ fontSize: 9, fontWeight: 400, opacity: 0.6 }}>{sublabel}</div>}
               </div>
             </Html>
           </group>
@@ -624,33 +585,26 @@ function AzureStack({
   );
 }
 
-// ─── Dashed connector: phone → deployment stack ───────────────────────────────
-function ConnectorLine({ scrollRef }: { scrollRef: React.MutableRefObject<number> }) {
+// ─── PhoneToVpsConnector — dashed line from phone center to VPS box ───────────
+function PhoneToVpsConnector({ autoPlayRef }: { autoPlayRef: React.MutableRefObject<number | null> }) {
   const geo = useMemo(() => {
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.BufferAttribute(new Float32Array([
       0.48, -0.1, 0,
-      STACK_FINAL_X - CUBE_W / 2 - 0.12, -0.1, 0,
+      STACK_FINAL_X - VPS_W/2 - 0.12, -0.1, 0,
     ]), 3));
     return g;
   }, []);
-
-  const mat = useMemo(() => new THREE.LineDashedMaterial({
-    color: '#aaaaaa',
-    dashSize: 0.35,
-    gapSize: 0.25,
-  }), []);
-
+  const mat     = useMemo(() => new THREE.LineDashedMaterial({ color: PALETTE.connector, dashSize: 0.35, gapSize: 0.25 }), []);
   const lineObj = useMemo(() => new THREE.Line(geo, mat), [geo, mat]);
 
   useFrame(() => {
-    const s = scrollRef.current;
-    lineObj.visible = s > 0.81;
+    const elapsed = getElapsed(autoPlayRef.current);
+    lineObj.visible = elapsed >= TL.connectors.phoneToVps.delay;
     if (!lineObj.visible) return;
-
-    const vpsY = lerp(0, VPS_FINAL_Y, easeOut3(t01(s, 0.95, 0.99)));
+    const vpsT = phaseT(elapsed, TL.backend.vps.vpsMove.delay, TL.backend.vps.vpsMove.duration);
     const pos  = geo.attributes.position as THREE.BufferAttribute;
-    pos.setXYZ(1, STACK_FINAL_X - CUBE_W / 2 - 0.12, vpsY, 0);
+    pos.setXYZ(1, STACK_FINAL_X - VPS_W/2 - 0.12, lerp(0, VPS_FINAL_Y, vpsT), 0);
     pos.needsUpdate = true;
     lineObj.computeLineDistances();
   });
@@ -658,33 +612,25 @@ function ConnectorLine({ scrollRef }: { scrollRef: React.MutableRefObject<number
   return <primitive object={lineObj} />;
 }
 
-// ─── Dashed connector: Azure bottom → VPS top ────────────────────────────────
-function AzureVpsConnector({ scrollRef }: { scrollRef: React.MutableRefObject<number> }) {
+// ─── VpsToCloudConnector — dashed line from VPS top to Cloud bottom ───────────
+function VpsToCloudConnector({ autoPlayRef }: { autoPlayRef: React.MutableRefObject<number | null> }) {
   const geo = useMemo(() => {
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.BufferAttribute(new Float32Array([
-      STACK_FINAL_X, AZURE_CENTER_Y - AZURE_BOX_H / 2, 0,
-      STACK_FINAL_X, CUBE_H / 2, 0,
+      STACK_FINAL_X, CLOUD_CENTER_Y - CLOUD_H/2, 0,
+      STACK_FINAL_X, VPS_H/2, 0,
     ]), 3));
     return g;
   }, []);
-
-  const mat = useMemo(() => new THREE.LineDashedMaterial({
-    color: '#aaaaaa',
-    dashSize: 0.15,
-    gapSize: 0.12,
-  }), []);
-
+  const mat     = useMemo(() => new THREE.LineDashedMaterial({ color: PALETTE.connector, dashSize: 0.15, gapSize: 0.12 }), []);
   const lineObj = useMemo(() => new THREE.Line(geo, mat), [geo, mat]);
 
   useFrame(() => {
-    const s     = scrollRef.current;
-    const cubeT = clamp(t01(s, 0.96, 0.99), 0, 1);
-    lineObj.visible = cubeT > 0;
+    const elapsed = getElapsed(autoPlayRef.current);
+    lineObj.visible = elapsed >= TL.connectors.vpsToCloud.delay;
     if (!lineObj.visible) return;
-
-    const vpsY   = lerp(0, VPS_FINAL_Y, easeOut3(t01(s, 0.95, 0.99)));
-    const vpsTop = vpsY + CUBE_H / 2;
+    const vpsT   = phaseT(elapsed, TL.backend.vps.vpsMove.delay, TL.backend.vps.vpsMove.duration);
+    const vpsTop = lerp(0, VPS_FINAL_Y, vpsT) + VPS_H/2;
     const pos    = geo.attributes.position as THREE.BufferAttribute;
     pos.setXYZ(1, STACK_FINAL_X, vpsTop, 0);
     pos.needsUpdate = true;
@@ -694,74 +640,124 @@ function AzureVpsConnector({ scrollRef }: { scrollRef: React.MutableRefObject<nu
   return <primitive object={lineObj} />;
 }
 
+// ─── IdeationLabel — "Die Entwicklungsgeschichte" centered below the panels ───
+const PANEL_ROW_CENTER_X = (PANEL_FINAL_X[0] + PANEL_FINAL_X[PANEL_FINAL_X.length - 1]) / 2;
+
+function IdeationLabel({ autoPlayRef }: { autoPlayRef: React.MutableRefObject<number | null> }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useFrame(() => {
+    if (!ref.current) return;
+    const elapsed = getElapsed(autoPlayRef.current);
+    ref.current.style.opacity = elapsed < 0
+      ? '0'
+      : String(clamp((elapsed - TL.labels.left.delay) / 800, 0, 1));
+  });
+  return (
+    <group position={[PANEL_ROW_CENTER_X, -(PANEL_H / 2 + 1.1), 0]}>
+      <Html center style={{ pointerEvents: 'none' }}>
+        <div ref={ref} style={{
+          opacity: 0, whiteSpace: 'nowrap',
+          fontFamily: 'var(--font-jetbrains-mono, "JetBrains Mono", monospace)',
+          fontSize: 16, letterSpacing: '0.25em',
+          textTransform: 'uppercase', color: 'rgba(0,0,0,0.3)',
+        }}>
+          Die Entwicklungsgeschichte
+        </div>
+      </Html>
+    </group>
+  );
+}
+
+// ─── BackendLabel — "Das Hintergrundsystem" below the VPS stack ──────────────
+function BackendLabel({ autoPlayRef }: { autoPlayRef: React.MutableRefObject<number | null> }) {
+  const ref      = useRef<HTMLDivElement>(null);
+  const groupRef = useRef<THREE.Group>(null);
+  useFrame(() => {
+    const elapsed = getElapsed(autoPlayRef.current);
+    if (groupRef.current) {
+      const vpsT = phaseT(elapsed, TL.backend.vps.vpsMove.delay, TL.backend.vps.vpsMove.duration);
+      groupRef.current.position.y = lerp(0, VPS_FINAL_Y, vpsT) - VPS_H / 2 - 0.8;
+    }
+    if (ref.current) {
+      ref.current.style.opacity = elapsed < 0
+        ? '0'
+        : String(clamp((elapsed - TL.labels.right.delay) / 800, 0, 1));
+    }
+  });
+  return (
+    <group ref={groupRef} position={[STACK_FINAL_X, -VPS_H / 2 - 0.4, 0]}>
+      <Html center style={{ pointerEvents: 'none' }}>
+        <div ref={ref} style={{
+          opacity: 0, whiteSpace: 'nowrap',
+          fontFamily: 'var(--font-jetbrains-mono, "JetBrains Mono", monospace)',
+          fontSize: 16, letterSpacing: '0.25em',
+          textTransform: 'uppercase', color: 'rgba(0,0,0,0.3)',
+        }}>
+          Das Hintergrundsystem
+        </div>
+      </Html>
+    </group>
+  );
+}
+
 // ─── Scene root ───────────────────────────────────────────────────────────────
 function Scene({
-  scrollRef,
-  focusRef,
-  setFocus,
-  layers,
+  scrollRef, autoPlayRef,
 }: {
-  scrollRef: React.MutableRefObject<number>;
-  focusRef: React.MutableRefObject<FocusPreset | null>;
-  setFocus: (preset: FocusPreset | null) => void;
-  layers: LayerData[];
+  scrollRef:   React.MutableRefObject<number>;
+  autoPlayRef: React.MutableRefObject<number | null>;
 }) {
   return (
     <>
       <ambientLight intensity={0.5} />
-      <directionalLight position={[4, 6, 4]}   intensity={1.2} />
-      <directionalLight position={[-3, 2, -2]}  intensity={0.4} color="#bfd4ff" />
-      <directionalLight position={[0, -3, 2]}   intensity={0.15} />
+      <directionalLight position={[4, 6, 4]}  intensity={1.2} />
+      <directionalLight position={[-3, 2, -2]} intensity={0.4} color="#bfd4ff" />
+      <directionalLight position={[0, -3, 2]}  intensity={0.15} />
 
-      <CameraAnimation scrollRef={scrollRef} focusRef={focusRef} />
-      <Phone scrollRef={scrollRef} onFocus={() => setFocus(PHONE_FOCUS)} />
+      {/* Phone (center) */}
+      <Camera scrollRef={scrollRef} />
+      <Phone  scrollRef={scrollRef} />
 
-      {layers.map((layer, i) => (
-        <PhasePanel
-          key={layer.session}
-          scrollRef={scrollRef}
-          data={layer}
+      {/* Ideation (left) */}
+      <IdeationArrow autoPlayRef={autoPlayRef} />
+      <IdeationLabel autoPlayRef={autoPlayRef} />
+      {IDEATION_PHASES.map((phase, i) => (
+        <IdeationPanel
+          key={phase.label}
+          autoPlayRef={autoPlayRef}
+          phase={phase}
           index={i}
           finalX={PANEL_FINAL_X[i] ?? -1.1}
-          onFocus={() => setFocus(PANEL_FOCUS[i] ?? PHONE_FOCUS)}
         />
       ))}
 
-      <DeploymentStack scrollRef={scrollRef} onFocus={() => setFocus(VPS_FOCUS)} />
-      <AzureStack      scrollRef={scrollRef} onFocus={() => setFocus(AZURE_FOCUS)} />
-      <ConnectorLine   scrollRef={scrollRef} />
-      <AzureVpsConnector scrollRef={scrollRef} />
+      {/* Backend (right) */}
+      <BackendVps           autoPlayRef={autoPlayRef} />
+      <BackendCloud         autoPlayRef={autoPlayRef} />
+      <PhoneToVpsConnector  autoPlayRef={autoPlayRef} />
+      <VpsToCloudConnector  autoPlayRef={autoPlayRef} />
+      <BackendLabel         autoPlayRef={autoPlayRef} />
     </>
   );
 }
 
-// ─── Canvas (dynamically imported, ssr: false) ────────────────────────────────
+// ─── Canvas root ──────────────────────────────────────────────────────────────
 export default function PhoneScene({
   scrollYProgress,
-  layers,
 }: {
   scrollYProgress: MotionValue<number>;
-  layers: LayerData[];
 }) {
-  const scrollRef = useRef(0);
-  const focusRef  = useRef<FocusPreset | null>(null);
-  const [hasFocus, setHasFocus] = useState(false);
+  const scrollRef   = useRef(0);
+  const autoPlayRef = useRef<number | null>(null);
 
-  useMotionValueEvent(scrollYProgress, 'change', (v) => { scrollRef.current = v; });
-
-  const setFocus = (preset: FocusPreset | null) => {
-    focusRef.current = preset;
-    setHasFocus(preset !== null);
-  };
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setFocus(null); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => () => { document.body.style.cursor = 'auto'; }, []);
+  useMotionValueEvent(scrollYProgress, 'change', (v) => {
+    scrollRef.current = v;
+    if (v >= INTRO_END && autoPlayRef.current === null) {
+      autoPlayRef.current = performance.now();
+    } else if (v < INTRO_END) {
+      autoPlayRef.current = null;
+    }
+  });
 
   return (
     <div className="relative w-full h-full">
@@ -771,18 +767,9 @@ export default function PhoneScene({
         dpr={[1, 2]}
         style={{ background: 'transparent' }}
       >
-        <Scene scrollRef={scrollRef} focusRef={focusRef} setFocus={setFocus} layers={layers} />
+        <Scene scrollRef={scrollRef} autoPlayRef={autoPlayRef} />
       </Canvas>
 
-      {hasFocus && (
-        <button
-          onClick={() => setFocus(null)}
-          className="absolute bottom-4 right-4 font-mono text-[10px] tracking-widest uppercase text-black/30 hover:text-black/70 transition-colors"
-          style={{ zIndex: 10 }}
-        >
-          × Übersicht
-        </button>
-      )}
     </div>
   );
 }

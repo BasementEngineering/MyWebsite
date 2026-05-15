@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Calendar } from 'lucide-react';
 import { content } from '@/lib/content';
 
 function PillarCard({
@@ -70,9 +71,19 @@ function PillarCard({
           {pillar.body}
         </p>
 
+        {'cta' in pillar && pillar.cta && (
+          <a
+            href={pillar.cta.href}
+            className="inline-flex items-center gap-2 mt-6 font-sans text-xs tracking-[0.2em] uppercase px-5 py-3 border border-white/60 text-white hover:bg-white hover:text-gray-900 transition-colors duration-300 w-fit"
+          >
+            <Calendar className="w-3.5 h-3.5" strokeWidth={1.5} />
+            {pillar.cta.label}
+          </a>
+        )}
+
         {/* Image dot indicators */}
         {pillar.images.length > 1 && (
-          <div className="flex gap-1.5 mt-6">
+          <div className="flex gap-1.5 mt-4">
             {pillar.images.map((_, i) => (
               <button
                 key={i}
@@ -109,20 +120,6 @@ export default function SkillsTrinity() {
           ))}
         </div>
 
-        <motion.div
-          className="mt-16 text-center"
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.8, delay: 0.4 }}
-        >
-          <a
-            href={content.trinity.cta.href}
-            className="font-sans text-xs tracking-[0.2em] uppercase px-10 py-4 border border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white transition-colors duration-300"
-          >
-            {content.trinity.cta.label}
-          </a>
-        </motion.div>
       </div>
     </section>
   );
