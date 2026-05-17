@@ -2,7 +2,31 @@ import { NextRequest } from 'next/server';
 
 export const maxDuration = 60;
 
-const MODEL = process.env.MISTRAL_MODEL ?? 'mistral-small-latest';
+const MODEL          = process.env.MISTRAL_MODEL ?? 'mistral-small-latest';
+const FALLBACK_MODEL = process.env.MISTRAL_FALLBACK_MODEL ?? 'open-mistral-7b';
+
+async function mistralFetch(model: string, body: object): Promise<Response> {
+  return fetch('https://api.mistral.ai/v1/chat/completions', {
+    method:  'POST',
+    headers: {
+      'Content-Type':  'application/json',
+      'Authorization': `Bearer ${process.env.MISTRAL_API_KEY}`,
+    },
+    body:   JSON.stringify({ model, ...body }),
+    signal: AbortSignal.timeout(30_000),
+  });
+}
+
+async function mistralFetchWithRetry(model: string, body: object): Promise<Response> {
+  const delays = [1000, 2000];
+  for (let attempt = 0; attempt <= delays.length; attempt++) {
+    const res = await mistralFetch(model, body);
+    if (res.status !== 429) return res;
+    if (attempt < delays.length) await new Promise(r => setTimeout(r, delays[attempt]));
+  }
+  // Final fallback: try smaller open model once
+  return mistralFetch(FALLBACK_MODEL, body);
+}
 
 async function searchKnowledge(query: string): Promise<{ context: string; count: number }> {
   const endpoint = process.env.AZURE_AI_SEARCH_ENDPOINT?.replace(/\/$/, '');
@@ -75,19 +99,10 @@ export async function POST(req: NextRequest) {
         // ── Step 2: Inference via raw fetch (avoids SDK injecting stream_options) ──
         emit({ type: 'status', step: 'generating' });
 
-        const llmRes = await fetch('https://api.mistral.ai/v1/chat/completions', {
-          method:  'POST',
-          headers: {
-            'Content-Type':  'application/json',
-            'Authorization': `Bearer ${process.env.MISTRAL_API_KEY}`,
-          },
-          body: JSON.stringify({
-            model:      MODEL,
-            max_tokens: 256,
-            stream:     true,
-            messages:   [{ role: 'system', content: SYSTEM }, ...messagesWithContext],
-          }),
-          signal: AbortSignal.timeout(30_000),
+        const llmRes = await mistralFetchWithRetry(MODEL, {
+          max_tokens: 256,
+          stream:     true,
+          messages:   [{ role: 'system', content: SYSTEM }, ...messagesWithContext],
         });
 
         if (!llmRes.ok) {
@@ -99,15 +114,17 @@ export async function POST(req: NextRequest) {
         const decoder = new TextDecoder();
         let inputTokens  = 0;
         let outputTokens = 0;
+        let buf = '';
 
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
 
-          const raw   = decoder.decode(value, { stream: true });
-          const lines = raw.split('\n').filter(l => l.startsWith('data: '));
+          buf += decoder.decode(value, { stream: true });
+          const lines = buf.split('\n');
+          buf = lines.pop() ?? '';
 
-          for (const line of lines) {
+          for (const line of lines.filter(l => l.startsWith('data: '))) {
             const payload = line.slice(6).trim();
             if (payload === '[DONE]') continue;
             try {

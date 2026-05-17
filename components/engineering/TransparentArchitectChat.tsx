@@ -73,9 +73,9 @@ const MONO = 'var(--font-jetbrains-mono, "JetBrains Mono", monospace)';
 const MAX_INPUT_TOKENS = 200;
 
 const SUGGESTED_PROMPTS = [
-  'Was waren deine letzten Projekte?',
-  'Wie setzt du KI konkret in der Praxis ein?',
-  'Was ist dein Software Stack?',
+  'Wie integrierst du KI in bestehende Unternehmensinfrastruktur?',
+  'Wie stellst du DSGVO-Konformität bei KI-Projekten sicher?',
+  'Welche KI-Projekte hast du bisher federführend umgesetzt?',
 ];
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
@@ -179,13 +179,16 @@ export default function TransparentArchitectChat() {
       const reader  = res.body!.getReader();
       const decoder = new TextDecoder();
       let assembled = '';
+      let buf = '';
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
-        const raw   = decoder.decode(value, { stream: true });
-        const lines = raw.split('\n').filter(l => l.startsWith('data: '));
+        buf += decoder.decode(value, { stream: true });
+        const allLines = buf.split('\n');
+        buf = allLines.pop() ?? '';
+        const lines = allLines.filter(l => l.startsWith('data: '));
 
         for (const line of lines) {
           let evt: {
