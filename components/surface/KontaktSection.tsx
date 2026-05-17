@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import Link from 'next/link';
 import { content } from '@/lib/content';
 
 export default function KontaktSection() {
@@ -45,6 +46,21 @@ export default function KontaktSection() {
             </a>
           ))}
         </motion.div>
+
+        <div className="mt-16 flex justify-center gap-8">
+          <Link
+            href="/impressum"
+            className="font-mono text-[10px] tracking-[0.2em] uppercase text-white/20 hover:text-white/50 transition-colors duration-300"
+          >
+            Impressum
+          </Link>
+          <Link
+            href="/datenschutz"
+            className="font-mono text-[10px] tracking-[0.2em] uppercase text-white/20 hover:text-white/50 transition-colors duration-300"
+          >
+            Datenschutz
+          </Link>
+        </div>
       </div>
     </section>
   );

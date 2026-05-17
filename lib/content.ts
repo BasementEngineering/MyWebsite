@@ -13,8 +13,8 @@ export const content = {
     intro: 'Oder kontaktieren Sie mich persönlich.',
     email: 'contact@jankettler.info',
     links: [
-      { label: 'LinkedIn', href: '#' },
-      { label: 'GitHub', href: '#' },
+      { label: 'LinkedIn', href: 'https://www.linkedin.com/in/jan-kettler-a4047b282/' },
+      { label: 'GitHub', href: 'https://github.com/BasementEngineering' },
     ],
   },
   hero: {

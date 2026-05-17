@@ -23,8 +23,11 @@ const IDEATION_PHASES = [
 // ─── Backend stacks (right side) ─────────────────────────────────────────────
 const VPS_LAYERS = ['Node JS', 'Docker', 'Coolify'] as const;
 const CLOUD_LAYERS = [
-  { label: 'AI Foundry', sublabel: 'Phi-4-mini-instruct' },
-  { label: 'AI Search',  sublabel: '' },
+  { label: 'AI Search', sublabel: '' },
+] as const;
+
+const MISTRAL_LAYERS = [
+  { label: 'mistral-small', sublabel: 'latest' },
 ] as const;
 
 // ─── Color palette ────────────────────────────────────────────────────────────
@@ -39,6 +42,10 @@ const PALETTE = {
   cloudBox:       '#c8d4ff',
   cloudEdges:     '#8899cc',
   cloudLayers:    ['#607bd1', '#60a8c0'] as string[],
+  // Backend — Mistral (single slab)
+  mistralBox:    '#c8d4ff',
+  mistralEdges:  '#8899cc',
+  mistralLayers: ['#ff8c42'] as string[],
   // Shared
   arrow:          '#aaaaaa',
   connector:      '#aaaaaa',
@@ -85,12 +92,20 @@ const TL = {
         { delay: 5900, duration: 500 },   // i=1  AI Search  (first)
       ] as const,
     },
+    mistral: {
+      flyIn:  { delay: 7200, duration: 700 },
+      cube:   { delay: 7500, duration: 600 },
+      layers: [
+        { delay: 8000, duration: 500 },   // i=0  mistral-small
+      ] as const,
+    },
   },
 
   // ── Connectors ───────────────────────────────────────────────────────────
   connectors: {
-    phoneToVps:  { delay: 3000 },   // dashed line: phone center → VPS box
-    vpsToCloud:  { delay: 5500 },   // dashed line: VPS top → Cloud bottom
+    phoneToVps:     { delay: 3000 },   // dashed line: phone center → VPS box
+    vpsToCloud:     { delay: 5500 },   // dashed line: VPS top → Cloud bottom
+    vpsToMistral:   { delay: 7200 },   // dashed line: VPS top → Mistral bottom
   },
 
   // ── Bottom labels ────────────────────────────────────────────────────────
@@ -133,15 +148,25 @@ const VPS_LAYER_D    = 0.7;
 const vpsLayerY      = (i: number) => 0.32 - i * 0.32;
 const VPS_FINAL_Y    = -0.5;
 
-// Backend — Cloud box
+// Backend — Cloud box (Azure)
 const CLOUD_CENTER_Y = 1.3;
-const CLOUD_W        = 1.4;
-const CLOUD_H        = 0.9;
-const CLOUD_D        = 0.8;
-const CLOUD_SLAB_W   = 1.1;
-const CLOUD_SLAB_H   = 0.20;
-const CLOUD_SLAB_D   = 0.6;
-const cloudSlabY     = (i: number) => 0.15 - i * 0.30;
+const CLOUD_W        = 1.1;
+const CLOUD_H        = 0.50;
+const CLOUD_D        = 0.60;
+const CLOUD_SLAB_W   = 0.88;
+const CLOUD_SLAB_H   = 0.18;
+const CLOUD_SLAB_D   = 0.48;
+const cloudSlabY     = (_i: number) => 0;  // single slab — centered
+
+// Backend — Mistral cloud box (right of Azure, same size and color)
+const MISTRAL_X        = STACK_FINAL_X + 1.9;
+const MISTRAL_CENTER_Y = CLOUD_CENTER_Y;
+const MISTRAL_H        = CLOUD_H;
+const MISTRAL_W        = CLOUD_W;
+const MISTRAL_D        = CLOUD_D;
+const MISTRAL_SLAB_W   = CLOUD_SLAB_W;
+const MISTRAL_SLAB_H   = CLOUD_SLAB_H;
+const MISTRAL_SLAB_D   = CLOUD_SLAB_D;
 
 // ╔══════════════════════════════════════════════════════════════════════════════╗
 // ║  INTERNALS — no need to edit below this line for typical changes           ║
@@ -399,9 +424,7 @@ function BackendVps({ autoPlayRef }: { autoPlayRef: React.MutableRefObject<numbe
   const edgesMatRef   = useRef<THREE.LineBasicMaterial>(null);
   const slabMatRefs   = useRef<(THREE.MeshStandardMaterial | null)[]>([]);
   const lineGroupRefs = useRef<(THREE.Group | null)[]>([]);
-  const calloutRef    = useRef<THREE.Group>(null);
   const titleRef      = useRef<HTMLDivElement>(null);
-  const vpsLabelRef   = useRef<HTMLDivElement>(null);
   const layerLabelRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   const edgesGeo = useMemo(
@@ -423,9 +446,7 @@ function BackendVps({ autoPlayRef }: { autoPlayRef: React.MutableRefObject<numbe
 
     if (cubeMatRef.current)  cubeMatRef.current.opacity  = lerp(0, 0.07, cubeT);
     if (edgesMatRef.current) edgesMatRef.current.opacity = lerp(0, 0.5,  cubeT);
-    if (calloutRef.current)  calloutRef.current.visible  = cubeT > 0;
-    if (titleRef.current)    titleRef.current.style.opacity    = String(cubeT);
-    if (vpsLabelRef.current) vpsLabelRef.current.style.opacity = String(cubeT);
+    if (titleRef.current) titleRef.current.style.opacity = String(cubeT);
 
     VPS_LAYERS.forEach((_, i) => {
       const { delay, duration } = TL.backend.vps.layers[i];
@@ -444,7 +465,7 @@ function BackendVps({ autoPlayRef }: { autoPlayRef: React.MutableRefObject<numbe
             opacity: 0, whiteSpace: 'nowrap',
             fontFamily: 'var(--font-jetbrains-mono, "JetBrains Mono", monospace)',
             fontSize: 11, fontWeight: 600, color: PALETTE.label, letterSpacing: '0.03em',
-          }}>Deployment</div>
+          }}>Linux VPS</div>
         </Html>
       </group>
 
@@ -456,23 +477,6 @@ function BackendVps({ autoPlayRef }: { autoPlayRef: React.MutableRefObject<numbe
       <lineSegments geometry={edgesGeo} renderOrder={3}>
         <lineBasicMaterial ref={edgesMatRef} color={PALETTE.vpsEdges} transparent opacity={0} />
       </lineSegments>
-
-      <group ref={calloutRef} visible={false}>
-        <Line
-          points={[[VPS_W/2, -VPS_H/2, 0], [VPS_W/2+0.45, -VPS_H/2-0.35, 0]]}
-          color={PALETTE.connector} lineWidth={1}
-        />
-        <group position={[VPS_W/2+0.48, -VPS_H/2-0.35, 0]}>
-          <Html style={{ pointerEvents: 'none' }}>
-            <div ref={vpsLabelRef} style={{
-              opacity: 0, whiteSpace: 'nowrap',
-              fontFamily: 'var(--font-jetbrains-mono, "JetBrains Mono", monospace)',
-              fontSize: 11, fontWeight: 600, color: PALETTE.label,
-              transform: 'translateY(-50%)',
-            }}>Linux VPS</div>
-          </Html>
-        </group>
-      </group>
 
       {VPS_LAYERS.map((label, i) => (
         <group key={label} position={[0, vpsLayerY(i), 0]}>
@@ -595,6 +599,98 @@ function BackendCloud({ autoPlayRef }: { autoPlayRef: React.MutableRefObject<num
   );
 }
 
+// ─── BackendMistral — Mistral AI cloud box ───────────────────────────────────
+function BackendMistral({ autoPlayRef }: { autoPlayRef: React.MutableRefObject<number | null> }) {
+  const groupRef       = useRef<THREE.Group>(null);
+  const cubeMatRef     = useRef<THREE.MeshStandardMaterial>(null);
+  const edgesMatRef    = useRef<THREE.LineBasicMaterial>(null);
+  const slabMatRefs    = useRef<(THREE.MeshStandardMaterial | null)[]>([]);
+  const lineGroupRefs  = useRef<(THREE.Group | null)[]>([]);
+  const titleRef       = useRef<HTMLDivElement>(null);
+  const layerLabelRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  const edgesGeo = useMemo(
+    () => new THREE.EdgesGeometry(new THREE.BoxGeometry(MISTRAL_W, MISTRAL_H, MISTRAL_D)), []
+  );
+
+  useFrame(() => {
+    if (!groupRef.current) return;
+    const elapsed = getElapsed(autoPlayRef.current);
+
+    const flyT  = phaseT(elapsed, TL.backend.mistral.flyIn.delay, TL.backend.mistral.flyIn.duration);
+    const cubeT = phaseT(elapsed, TL.backend.mistral.cube.delay,  TL.backend.mistral.cube.duration);
+
+    groupRef.current.position.x = lerp(0, MISTRAL_X, flyT);
+    groupRef.current.position.y = MISTRAL_CENTER_Y;
+    groupRef.current.rotation.y = PHONE_ROT_Y;
+    groupRef.current.rotation.x = PHONE_ROT_X;
+
+    if (cubeMatRef.current)  cubeMatRef.current.opacity  = lerp(0, 0.07, cubeT);
+    if (edgesMatRef.current) edgesMatRef.current.opacity = lerp(0, 0.5,  cubeT);
+    if (titleRef.current)    titleRef.current.style.opacity = String(cubeT);
+
+    MISTRAL_LAYERS.forEach((_, i) => {
+      const { delay, duration } = TL.backend.mistral.layers[i];
+      const lt  = phaseT(elapsed, delay, duration);
+      const mat = slabMatRefs.current[i];    if (mat)  mat.opacity       = lt;
+      const grp = lineGroupRefs.current[i];  if (grp)  grp.visible       = lt > 0;
+      const lbl = layerLabelRefs.current[i]; if (lbl)  lbl.style.opacity = String(lt);
+    });
+  });
+
+  return (
+    <group ref={groupRef}>
+      <group position={[0, MISTRAL_H / 2 + 0.18, 0]}>
+        <Html center style={{ pointerEvents: 'none' }}>
+          <div ref={titleRef} style={{
+            opacity: 0, whiteSpace: 'nowrap',
+            fontFamily: 'var(--font-jetbrains-mono, "JetBrains Mono", monospace)',
+            fontSize: 11, fontWeight: 600, color: PALETTE.label, letterSpacing: '0.03em',
+          }}>Mistral AI</div>
+        </Html>
+      </group>
+
+      <mesh renderOrder={2}>
+        <boxGeometry args={[MISTRAL_W, MISTRAL_H, MISTRAL_D]} />
+        <meshStandardMaterial ref={cubeMatRef} color={PALETTE.mistralBox}
+          transparent opacity={0} side={THREE.DoubleSide} depthWrite={false} />
+      </mesh>
+      <lineSegments geometry={edgesGeo} renderOrder={3}>
+        <lineBasicMaterial ref={edgesMatRef} color={PALETTE.mistralEdges} transparent opacity={0} />
+      </lineSegments>
+
+      {MISTRAL_LAYERS.map(({ label, sublabel }, i) => (
+        <group key={label} position={[0, 0, 0]}>
+          <mesh renderOrder={1}>
+            <boxGeometry args={[MISTRAL_SLAB_W, MISTRAL_SLAB_H, MISTRAL_SLAB_D]} />
+            <meshStandardMaterial
+              ref={el => { slabMatRefs.current[i] = el; }}
+              color={PALETTE.mistralLayers[i]}
+              transparent opacity={0} roughness={0.4} metalness={0.1}
+            />
+          </mesh>
+          <group ref={el => { lineGroupRefs.current[i] = el; }} visible={false}>
+            <Line points={[[MISTRAL_SLAB_W/2, 0, 0], [MISTRAL_W/2+0.12, 0, 0]]} color={PALETTE.connector} lineWidth={1} />
+          </group>
+          <group position={[MISTRAL_W/2+0.15, 0, 0]}>
+            <Html style={{ pointerEvents: 'none' }}>
+              <div ref={el => { layerLabelRefs.current[i] = el; }} style={{
+                opacity: 0, whiteSpace: 'nowrap',
+                fontFamily: 'var(--font-jetbrains-mono, "JetBrains Mono", monospace)',
+                fontSize: 11, fontWeight: 600, color: PALETTE.label,
+                transform: 'translateY(-50%)', lineHeight: 1.4,
+              }}>
+                {label}
+                {sublabel && <div style={{ fontSize: 9, fontWeight: 400, opacity: 0.6 }}>{sublabel}</div>}
+              </div>
+            </Html>
+          </group>
+        </group>
+      ))}
+    </group>
+  );
+}
+
 // ─── PhoneToVpsConnector — dashed line from phone center to VPS box ───────────
 function PhoneToVpsConnector({ autoPlayRef }: { autoPlayRef: React.MutableRefObject<number | null> }) {
   const geo = useMemo(() => {
@@ -641,6 +737,34 @@ function VpsToCloudConnector({ autoPlayRef }: { autoPlayRef: React.MutableRefObj
     if (!lineObj.visible) return;
     const vpsT   = phaseT(elapsed, TL.backend.vps.vpsMove.delay, TL.backend.vps.vpsMove.duration);
     const vpsTop = lerp(0, VPS_FINAL_Y, vpsT) + VPS_H/2;
+    const pos    = geo.attributes.position as THREE.BufferAttribute;
+    pos.setXYZ(1, STACK_FINAL_X, vpsTop, 0);
+    pos.needsUpdate = true;
+    lineObj.computeLineDistances();
+  });
+
+  return <primitive object={lineObj} />;
+}
+
+// ─── VpsToMistralConnector — diagonal dashed line from VPS top to Mistral bottom
+function VpsToMistralConnector({ autoPlayRef }: { autoPlayRef: React.MutableRefObject<number | null> }) {
+  const geo = useMemo(() => {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(new Float32Array([
+      MISTRAL_X, MISTRAL_CENTER_Y - MISTRAL_H / 2, 0,  // point 0: Mistral bottom (static)
+      STACK_FINAL_X, VPS_H / 2, 0,                      // point 1: VPS top (updates with VPS y)
+    ]), 3));
+    return g;
+  }, []);
+  const mat     = useMemo(() => new THREE.LineDashedMaterial({ color: PALETTE.connector, dashSize: 0.35, gapSize: 0.25 }), []);
+  const lineObj = useMemo(() => new THREE.Line(geo, mat), [geo, mat]);
+
+  useFrame(() => {
+    const elapsed = getElapsed(autoPlayRef.current);
+    lineObj.visible = elapsed >= TL.connectors.vpsToMistral.delay;
+    if (!lineObj.visible) return;
+    const vpsT   = phaseT(elapsed, TL.backend.vps.vpsMove.delay, TL.backend.vps.vpsMove.duration);
+    const vpsTop = lerp(0, VPS_FINAL_Y, vpsT) + VPS_H / 2;
     const pos    = geo.attributes.position as THREE.BufferAttribute;
     pos.setXYZ(1, STACK_FINAL_X, vpsTop, 0);
     pos.needsUpdate = true;
@@ -742,11 +866,13 @@ function Scene({
       ))}
 
       {/* Backend (right) */}
-      <BackendVps           autoPlayRef={autoPlayRef} />
-      <BackendCloud         autoPlayRef={autoPlayRef} />
-      <PhoneToVpsConnector  autoPlayRef={autoPlayRef} />
-      <VpsToCloudConnector  autoPlayRef={autoPlayRef} />
-      <BackendLabel         autoPlayRef={autoPlayRef} />
+      <BackendVps                autoPlayRef={autoPlayRef} />
+      <BackendCloud              autoPlayRef={autoPlayRef} />
+      <BackendMistral            autoPlayRef={autoPlayRef} />
+      <PhoneToVpsConnector       autoPlayRef={autoPlayRef} />
+      <VpsToCloudConnector       autoPlayRef={autoPlayRef} />
+      <VpsToMistralConnector     autoPlayRef={autoPlayRef} />
+      <BackendLabel              autoPlayRef={autoPlayRef} />
     </>
   );
 }

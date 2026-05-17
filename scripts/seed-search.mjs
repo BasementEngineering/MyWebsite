@@ -24,6 +24,16 @@ const headers = {
   'api-key':      API_KEY,
 };
 
+async function deleteIndex() {
+  const res = await fetch(
+    `${ENDPOINT}/indexes/${INDEX}?api-version=${API_VERSION}`,
+    { method: 'DELETE', headers },
+  );
+  if (res.status === 404) { console.log(`ℹ Index "${INDEX}" did not exist, skipping delete`); return; }
+  if (!res.ok) { const err = await res.text(); throw new Error(`Delete failed (${res.status}): ${err}`); }
+  console.log(`✓ Index "${INDEX}" deleted`);
+}
+
 async function createIndex() {
   const schema = {
     name: INDEX,
@@ -62,6 +72,7 @@ async function uploadDocuments(docs) {
 }
 
 const docs = JSON.parse(readFileSync(join(__dir, 'knowledge.json'), 'utf8'));
+await deleteIndex();
 await createIndex();
 await uploadDocuments(docs);
 console.log('Done.');

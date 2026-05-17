@@ -23,6 +23,18 @@ export default function Hero() {
         />
       </motion.div>
 
+      <motion.a
+        href="https://www.linkedin.com/in/jan-kettler-a4047b282/"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="font-mono text-[10px] tracking-[0.22em] uppercase text-gray-400 hover:text-gray-900 transition-colors duration-300 mb-8"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.9, delay: 0.1, ease: 'easeOut' }}
+      >
+        LinkedIn ↗
+      </motion.a>
+
       <motion.p
         className="font-sans text-xs tracking-[0.35em] uppercase text-gray-400 mb-8"
         initial={{ opacity: 0, y: 8 }}

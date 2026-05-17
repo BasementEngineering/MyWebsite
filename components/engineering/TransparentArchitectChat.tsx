@@ -73,9 +73,9 @@ const MONO = 'var(--font-jetbrains-mono, "JetBrains Mono", monospace)';
 const MAX_INPUT_TOKENS = 200;
 
 const SUGGESTED_PROMPTS = [
-  'Was machst du beruflich und was treibt dich an?',
+  'Was waren deine letzten Projekte?',
   'Wie setzt du KI konkret in der Praxis ein?',
-  'Worüber hast du als Speaker schon gesprochen?',
+  'Was ist dein Software Stack?',
 ];
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
@@ -107,15 +107,17 @@ export default function TransparentArchitectChat() {
   const [error,        setError]        = useState('');
   const [responseTime, setResponseTime] = useState<number | null>(null);
   const [liveTime,     setLiveTime]     = useState<number>(0);
+  const [privacyModal, setPrivacyModal] = useState<string | null>(null); // pending message text
 
-  const messagesRef  = useRef<HTMLDivElement>(null);
-  const bottomRef    = useRef<HTMLDivElement>(null);
-  const abortRef     = useRef<AbortController | null>(null);
-  const streamStart  = useRef(0);
-  const sendStart    = useRef(0);
-  const chunkCount   = useRef(0);
-  const tpsTimer     = useRef<ReturnType<typeof setInterval> | null>(null);
-  const liveTimer    = useRef<ReturnType<typeof setInterval> | null>(null);
+  const messagesRef    = useRef<HTMLDivElement>(null);
+  const bottomRef      = useRef<HTMLDivElement>(null);
+  const abortRef       = useRef<AbortController | null>(null);
+  const streamStart    = useRef(0);
+  const sendStart      = useRef(0);
+  const chunkCount     = useRef(0);
+  const tpsTimer       = useRef<ReturnType<typeof setInterval> | null>(null);
+  const liveTimer      = useRef<ReturnType<typeof setInterval> | null>(null);
+  const privacyAcked   = useRef(false);
 
   const isActive     = phase !== 'idle';
   const estInputTok  = estimateTokens(input);
@@ -139,6 +141,7 @@ export default function TransparentArchitectChat() {
   const send = useCallback(async (overrideText?: string) => {
     const text = (overrideText ?? input).trim();
     if (!text || isActive || overLimit) return;
+    if (!privacyAcked.current) { setPrivacyModal(text); return; }
 
     const userTokens = tokenizeInput(text);
     const next: Message[] = [...messages, { role: 'user', content: text, tokens: userTokens }];
@@ -218,7 +221,7 @@ export default function TransparentArchitectChat() {
         }
       }
 
-      setMessages(m => [...m, { role: 'assistant', content: assembled }]);
+      if (assembled.trim()) setMessages(m => [...m, { role: 'assistant', content: assembled }]);
       setTokenBlocks([]);
       setResponseTime(parseFloat(((performance.now() - sendStart.current) / 1000).toFixed(1)));
 
@@ -247,6 +250,7 @@ export default function TransparentArchitectChat() {
       border: `1px solid ${C.borderStrong}`,
       borderRadius: 4,
       overflow: 'hidden',
+      position: 'relative',
     }}>
 
       {/* ── Header bar ──────────────────────────────────────────────────────── */}
@@ -266,7 +270,7 @@ export default function TransparentArchitectChat() {
           <span style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: '#febc2e', display: 'inline-block' }} />
           <span style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: '#28c840', display: 'inline-block' }} />
           <span style={{ fontSize: 11, color: C.textDim, marginLeft: 8, letterSpacing: '0.08em' }}>
-            transparent-architect-chat
+            Jan Kettlers Chatbot
           </span>
         </div>
         <div style={{ display: 'flex', gap: 20, fontSize: 11 }}>
@@ -287,42 +291,8 @@ export default function TransparentArchitectChat() {
         gap: 20,
       }}>
         {messages.length === 0 && !isActive && (
-          <div style={{ margin: 'auto', textAlign: 'center' }}>
-            <div style={{ fontSize: 13, color: C.textFaint, marginBottom: 20 }}>
-              // Ask me anything about Jan
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center' }}>
-              {SUGGESTED_PROMPTS.map(prompt => (
-                <button
-                  key={prompt}
-                  onClick={() => send(prompt)}
-                  style={{
-                    fontFamily: MONO,
-                    fontSize: 12,
-                    padding: '8px 16px',
-                    border: `1px solid ${C.border}`,
-                    background: 'transparent',
-                    color: C.textDim,
-                    cursor: 'pointer',
-                    borderRadius: 3,
-                    maxWidth: 420,
-                    textAlign: 'left',
-                    lineHeight: 1.5,
-                    transition: 'border-color 0.2s, color 0.2s',
-                  }}
-                  onMouseEnter={e => {
-                    (e.currentTarget as HTMLButtonElement).style.borderColor = C.borderStrong;
-                    (e.currentTarget as HTMLButtonElement).style.color = C.text;
-                  }}
-                  onMouseLeave={e => {
-                    (e.currentTarget as HTMLButtonElement).style.borderColor = C.border;
-                    (e.currentTarget as HTMLButtonElement).style.color = C.textDim;
-                  }}
-                >
-                  &rsaquo; {prompt}
-                </button>
-              ))}
-            </div>
+          <div style={{ fontSize: 12, color: C.textFaint, letterSpacing: '0.08em' }}>
+            // Ask me anything about Jan
           </div>
         )}
 
@@ -363,6 +333,44 @@ export default function TransparentArchitectChat() {
             // Error: {error}
           </div>
         )}
+
+        {/* Suggested prompts — always visible, styled as clickable user bubbles */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, marginTop: 4 }}>
+          <MsgLabel>// vorgeschlagene fragen</MsgLabel>
+          {SUGGESTED_PROMPTS.map(prompt => (
+            <button
+              key={prompt}
+              onClick={() => !isActive && send(prompt)}
+              disabled={isActive}
+              style={{
+                fontFamily: MONO,
+                fontSize: 13,
+                padding: '8px 12px',
+                border: `1px dashed ${isActive ? C.border : C.borderStrong}`,
+                background: isActive ? 'transparent' : C.bgUser,
+                color: isActive ? C.textFaint : C.textDim,
+                cursor: isActive ? 'default' : 'pointer',
+                borderRadius: 3,
+                maxWidth: '88%',
+                textAlign: 'right',
+                lineHeight: 1.5,
+                transition: 'border-color 0.15s, color 0.15s',
+              }}
+              onMouseEnter={e => {
+                if (isActive) return;
+                (e.currentTarget as HTMLButtonElement).style.borderColor = C.green;
+                (e.currentTarget as HTMLButtonElement).style.color = C.text;
+              }}
+              onMouseLeave={e => {
+                if (isActive) return;
+                (e.currentTarget as HTMLButtonElement).style.borderColor = C.borderStrong;
+                (e.currentTarget as HTMLButtonElement).style.color = C.textDim;
+              }}
+            >
+              {prompt} ›
+            </button>
+          ))}
+        </div>
 
         <div ref={bottomRef} />
       </div>
@@ -427,6 +435,54 @@ export default function TransparentArchitectChat() {
           ))}
         </div>
       </div>
+
+      {/* ── Privacy notice modal ────────────────────────────────────────────── */}
+      {privacyModal !== null && (
+        <div style={{
+          position: 'absolute', inset: 0, zIndex: 50,
+          backgroundColor: 'rgba(0,0,0,0.75)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: 24,
+        }}>
+          <div style={{
+            backgroundColor: '#141414',
+            border: `1px solid ${C.borderStrong}`,
+            borderRadius: 4,
+            padding: '28px 28px 24px',
+            maxWidth: 420,
+            width: '100%',
+            fontFamily: MONO,
+          }}>
+            <div style={{ fontSize: 10, color: C.textFaint, letterSpacing: '0.2em', marginBottom: 16 }}>
+              // DATENSCHUTZHINWEIS
+            </div>
+            <p style={{ fontSize: 13, color: C.text, lineHeight: 1.7, margin: 0 }}>
+              Deine Nachricht wird zur Verarbeitung an{' '}
+              <span style={{ color: C.green }}>Mistral AI</span> (Frankreich, EU) und{' '}
+              <span style={{ color: C.green }}>Azure AI Search</span> (Microsoft) weitergeleitet.
+              Es werden keine Nachrichten dauerhaft gespeichert.
+            </p>
+            <div style={{ marginTop: 24, display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => {
+                  privacyAcked.current = true;
+                  const msg = privacyModal;
+                  setPrivacyModal(null);
+                  send(msg);
+                }}
+                style={{
+                  fontFamily: MONO, fontSize: 11, fontWeight: 700,
+                  letterSpacing: '0.12em', padding: '8px 24px',
+                  backgroundColor: C.green, color: '#0f0f0f',
+                  border: 'none', borderRadius: 3, cursor: 'pointer',
+                }}
+              >
+                VERSTANDEN ↵
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Input area ──────────────────────────────────────────────────────── */}
       <div style={{
@@ -507,7 +563,7 @@ function PipelineIndicator({ phase, ragFound }: { phase: Phase; ragFound: number
       }}>
         <Step icon={httpDone ? '✓' : '▶'} green={httpDone} dim={false}  label="POST /api/chat"            blink={!httpDone} />
         <Step icon={ragDone ? '✓' : ragActive ? '▶' : '·'} green={ragDone} dim={!ragActive && !ragDone}   label={ragLabel}  blink={ragActive} />
-        <Step icon={genStream ? '●' : genActive ? '▶' : '·'} green={false} dim={!genActive && !genStream} label={`phi4-mini-instruct${genStream ? '  · streaming' : ''}`} blink={genActive} pulse={genStream} />
+        <Step icon={genStream ? '●' : genActive ? '▶' : '·'} green={false} dim={!genActive && !genStream} label={`mistral-small-latest${genStream ? '  · streaming' : ''}`} blink={genActive} pulse={genStream} />
       </div>
     </div>
   );

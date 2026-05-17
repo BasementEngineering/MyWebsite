@@ -1,8 +1,23 @@
 [
   {
+    "id": "bio-00",
+    "title": "Selbstbeschreibung & Persönlichkeit",
+    "content": "Ich bin gelernter Ingenieur und verstehe mich als jemand, der gerne Systeme aufbaut – pragmatisch und lösungsorientiert. Ich halte mich durch kontinuierliche Recherche und zahlreiche Hackathons auf dem Stand neuer Technologien. Gleichzeitig habe ich ein Gespür für Bestandssysteme und ihre Risiken und finde nachhaltige Wege, Neues und Bestehendes sinnvoll zusammenzubringen."
+  },
+  {
+    "id": "stack-ai",
+    "title": "KI-Werkzeuge & LLM-Integration",
+    "content": "Mein bevorzugtes Werkzeug für die Softwareentwicklung ist Claude Code. Das nutze ich mit klassischen Task.md-Dateien und Playwright als Test-Framework mittlerweile auch häufiger zur komplett automatisierten Abarbeitung von kleineren Entwicklungsaufgaben. Bei der API-Integration von LLMs differenziere ich nach Datensensitivität: Für nicht-personenbezogene Daten nutze ich Google Gemini, für kritische Anwendungen setze ich auf selbstgehostete Open-Source-Modelle wie Gemma, die ich über einen eigenen Ollama-Server betreibe. Zusätzlich experimentiere ich mit der Mistral AI API – zum Beispiel als Inferenz-Backend für den Chatbot auf dieser Website."
+  },
+  {
+    "id": "stack-01",
+    "title": "Tech Stack & Technologiekompetenz",
+    "content": "Mein Fundament liegt in der klassischen Hardware-Welt, in der ich Programmierung mit C und C++ von Grund auf gelernt habe. Durch meine Arbeit im IoT-Umfeld hat sich mein Stack konsequent in Richtung Web-Technologien erweitert – von JavaScript und HTML bis hin zu Frameworks wie React und Vite. Heute wähle ich Werkzeuge gezielt nach dem Systemzweck: Für die meisten Aufgaben setze ich auf Python, bei performance-kritischen Anforderungen auf C/C++, für Webanwendungen auf Node.js mit TypeScript. In der Cloud-Infrastruktur habe ich Erfahrung mit allen großen Anbietern (AWS, Google Cloud, Azure), wobei Docker mein ständiger Begleiter ist. Im Unternehmenskontext setze ich primär auf Azure; private Systeme betreibe ich auf einem eigenen VPS mit Coolify und Ansible. Im Rahmen meiner Forschungsarbeit an der Hochschule Osnabrück habe ich SQL-Datenbanken im Multi-Terabyte-Bereich optimiert, beschleunigt und ausfallsicher gestaltet."
+  },
+  {
     "id": "bio-01",
     "title": "Aktuelle Tätigkeit",
-    "content": "Ich bin Jan Kettler, Systems Architect und AI Strategist mit Sitz in Deutschland. Aktuell arbeite ich bei der Seedhouse Accelerator GmbH in Osnabrück als Digital Innovation Manager und begleite Startups in der Frühphase. Meine inhaltlichen Schwerpunkte sind die Modernisierung von Legacy-Systemen – insbesondere in Mobility und Logistik –, der gezielte Einsatz von KI dort, wo sie echten operativen Mehrwert schafft, und der Aufbau robuster, datenschutzkonformer Dateninfrastrukturen. Ich habe einen Hintergrund in Softwareentwicklung und bin ein bekennender Skeptiker buzzword-getriebener Technologieentscheidungen."
+    "content": "Ich arbeite aktuell bei der Seedhouse Accelerator GmbH in Osnabrück als Digital Innovation Manager und Startup-Berater. Ich evaluiere neue Technologien – darunter KI-Dokumentensysteme und KI-Lead-Pipelines – und integriere sie in bestehende Systeme wie CRM, Outlook-Domäne und SharePoint-Infrastruktur, um sie im täglichen Arbeitsalltag des Seedhouse nutzbar zu machen. Darüber hinaus entwickle ich eine digitale Plattform für Startup-Daten und erweitere damit das digitale Portfolio des Seedhouse."
   },
   {
     "id": "bio-02",
@@ -42,17 +57,12 @@
   {
     "id": "experience-fi",
     "title": "Masterarbeit in Norwegen bei FI – Fremtidens Industri (DAAD-Stipendium)",
-    "content": "Meine Masterarbeit habe ich als Praktikant bei FI – Fremtidens Industri in Norwegen geschrieben. Den Aufenthalt habe ich vollständig selbst organisiert und durch ein Stipendium des Deutschen Akademischen Austauschdienstes (DAAD) finanziert. Diese Auslandserfahrung hat mich sowohl fachlich als auch persönlich geprägt."
+    "content": "Meine Masterarbeit habe ich als Praktikant bei FI – Fremtidens Industri in Norwegen geschrieben und durch ein Stipendium des Deutschen Akademischen Austauschdienstes (DAAD) finanziert. Der Aufenthalt war vollständig selbst organisiert. Titel der Arbeit: 'Developing eduROV 4 – Development and Enhancement of a Remotely Operated Underwater Vehicle for Educational Use'. Ich habe ein bestehendes norwegisches Open-Source-Projekt weiterentwickelt: eduROV ist ein kleines unbemanntes Unterwasserfahrzeug, das von Studierenden und ambitionierten Schülerinnen und Schülern aus einfachen Materialien für rund 300 € nachgebaut werden kann. Ich habe frühere Entwickler und Workshop-Betreuer aus Trondheim interviewt, um die größten Schwachstellen im Design zu identifizieren, und daraus Version 4 entwickelt – eine neue Variante, die wesentliche Schwachstellen eliminiert. Die fertige Hardware habe ich gebaut und im Testtank des DFKI Bremen erfolgreich evaluiert."
   },
   {
     "id": "experience-transitsense",
-    "title": "Gründer: TransitSense (eigenes IoT-Vorhaben)",
-    "content": "Parallel zu anderen Tätigkeiten habe ich ein Jahr lang als Selbstständiger an TransitSense gearbeitet – einem eigenen IoT-fokussierten Vorhaben. Ich schätze es, Ideen eigenverantwortlich umzusetzen, statt auf Strukturen zu warten."
-  },
-  {
-    "id": "experience-harting-eclass",
-    "title": "Manager Technische Anwendungen (eCl@ss, Harting)",
-    "content": "Im Rahmen meiner Zeit bei der Harting Technologiegruppe war ich als Manager Technische Anwendungen tätig. Ich habe digitale Produktkataloge nach dem eCl@ss Advanced Standard integriert und war Mitglied im eCl@ss Advanced Committee – einem Standardisierungsgremium für die digitale Beschreibung von Industrieprodukten."
+    "title": "Gründer: TransitSense – IoT-Fahrgastzählung für den ÖPNV",
+    "content": "Bei TransitSense habe ich mich dem Problem der fehlenden Datenbasis im öffentlichen Nahverkehr gewidmet. Fahrgastzahlen werden heute noch größtenteils über seltene manuelle Zählungen ermittelt – automatisierte Systeme existieren, sind aber aufwändig einzubauen und zu konfigurieren. TransitSense löste dieses Problem mit einem drahtlosen Sensor, der ein Fahrzeug binnen weniger Stunden ausrüstet: Anwender montieren lediglich eine Halterung zur Stromversorgung, der Sensor wird eingeschoben und fixiert. Vernetzung, Konfiguration, Routenzuweisung und Datenauswertung laufen vollautomatisch über die TransitSense-Plattform – Zähldaten landen in Echtzeit im Leitstand und in Fahrgastapps. Wir haben einen funktionsfähigen Prototyp entwickelt und erfolgreich mit einem Pilotkunden getestet. Nach einem Jahr haben wir das Unternehmen jedoch eingestellt: Eine gründliche Marktanalyse ergab, dass sich im besten Fall ein tragfähiges 10-köpfiges Unternehmen aufbauen ließe – die Einstiegshürden in den Markt (Konkurrenzpreise, Hardwarevertrieb als kleines Team) standen dazu in keinem vertretbaren Verhältnis."
   },
   {
     "id": "experience-planetarium",
@@ -61,8 +71,8 @@
   },
   {
     "id": "speaking-01",
-    "title": "Vorträge & Bühne",
-    "content": "Ich bin als Redner auf Science Slam-Veranstaltungen und KI-fokussierten Branchenkonferenzen aufgetreten, unter anderem bei der IdeaExpo. Ich verdichte komplexe technische Themen zu klaren, greifbaren Geschichten. Mein Ansatz: Substanz statt Hype, Wissenschaft auf der Bühne. Ich spreche sowohl auf Deutsch als auch auf Englisch."
+    "title": "Vorträge, Science Slam & Workshops",
+    "content": "Während meiner Startup-Zeit stand ich auf zahlreichen Bühnen und habe Ideen und Geschäftsmodelle gepitcht. Diese Bühnenpräsenz habe ich in meiner wissenschaftlichen Arbeit an der Hochschule Osnabrück als Science-Slam-Redner fortgeführt. Mein Kernthema: 'Datenschutz und Anonymisierung im Verkehr' – warum präzise Mobilitätsdaten für bessere Verkehrsplanung wichtig sind, welche Datenschutzrisiken damit einhergehen und wie neue Technologien beide Seiten zusammenbringen können. Bisher hatte ich 14 Auftritte in verschiedenen deutschen Städten – in Schulklassen, auf Fachkonferenzen, in Konzertsälen und Theatern, vor entsprechend diversen Publikumsgruppen. Darüber hinaus habe ich zwei Schülerworkshops im Maker-Bereich organisiert und auf der Maker Faire einen Fachvortrag darüber gehalten, wie man vom Maker-Projekt zum Schülerworkshop kommt. Aktuell biete ich Fachvorträge zur praktischen Nutzung moderner Technologien und KI in Industrieunternehmen an sowie Workshops für Verkehrsbetriebe, Städte und Kommunen zur datengetriebenen Mobilitätsplanung."
   },
   {
     "id": "focus-legacy",
@@ -78,6 +88,31 @@
     "id": "focus-data",
     "title": "Schwerpunkt: Dateninfrastruktur & Datenschutz",
     "content": "Ich entwerfe und bewerte Dateninfrastrukturen mit starkem Fokus auf Datenschutz und Compliance – insbesondere im europäischen Kontext (DSGVO). Sicherheit und Privacy sind für mich Fundament, nicht Nachgedanke. Meine Arbeit im Projekt 'Intelligent Pendeln' hat diesen Schwerpunkt praktisch gefestigt: Dort habe ich Werkzeuge zur datenschutzkonformen Anonymisierung von Mobilitätsdaten entwickelt."
+  },
+  {
+    "id": "languages",
+    "title": "Sprachkenntnisse",
+    "content": "Ich spreche Deutsch als Muttersprache und Englisch fließend auf C1-Niveau – sowohl schriftlich als auch mündlich, auch auf Konferenzen und in internationalen Teams. Rudimentäre Grundkenntnisse in Russisch (A1, primär schriftlich) runden mein Sprachprofil ab."
+  },
+  {
+    "id": "hobbies-maker",
+    "title": "Hobbys & Maker-Aktivitäten",
+    "content": "Privat arbeite ich an verschiedensten kreativen Hardware- und Softwareprojekten und stelle diese seit 2017 regelmäßig auf der Maker Faire Hannover aus. 2026 habe ich gemeinsam mit einem guten Freund einen Verein gegründet, in dem sich Maker austauschen und gegenseitig bei ihren Projekten unterstützen können. Aktuell treffen wir uns mit 10 Mitgliedern alle zwei Monate und decken ein breites Spektrum ab – von Holzarbeiten über automatisierte Gartenbewässerungsanlagen bis hin zu Stromnetzsimulationen. Im Sommer 2026 stellen wir einige dieser Projekte als Verein auf der Maker Faire Hannover aus."
+  },
+  {
+    "id": "hackathons",
+    "title": "Hackathon-Erfahrungen & Projekte",
+    "content": "Ich habe an zahlreichen Hackathons teilgenommen, bei denen meine Teams mehrfach ausgezeichnet wurden. Übersicht der bisherigen Teilnahmen:\n\n1. Data Run Hackathon (Juni 2023, Bundesministerium für Verkehr und Digitales, Hamburg): Datenbasierte Modal-Split-Auswertung für alle Stadtteile Hamburgs – funktionsfähiger Prototyp.\n\n2. Smart City Hack (September 2023, Smart City House, Osnabrück): PlanLos – automatisierte Fahrplanoptimierung für den ÖPNV durch Verspätungsdaten. Ergebnis: 1. Platz.\n\n3. Open Innovation City Hackathon (November 2023, Stadt Bielefeld): Treemagotchi – verwandelt Baumkatasterdaten in einen interaktiven Chat mit jedem Stadtbaum, um Bürgerpartizipation bei der Baumpflege zu fördern. Funktionsfähige Live-Version.\n\n4. True Crime Hackathon (November 2023, Innovation Hub der Landespolizei Niedersachsen, Hannover): Blue Buddy Bot – eine anonyme digitale Anlaufstelle, die es Kindern ermöglicht, sich Hilfe zu holen und selbst Anzeige zu erstatten, wenn sie Opfer von Child Grooming werden. Funktionsfähiger Prototyp. Ergebnis: 3. Platz.\n\n5. START Hack (März 2024, Start Global, St. Gallen): ESG Investment Visualizer – Konzept zur Visualisierung von ESG-Investitionsdaten.\n\n6. True Crime Hackathon (Februar 2025, Innovation Hub der Landespolizei Niedersachsen, Hannover): DiTa – der digitale Tatort zur Analyse von IoT-Daten nach Einbrüchen (funktionsfähiger Prototyp) sowie MiNa – eine App zur mobilen Aufnahme von IoT-Daten (Konzept).\n\n7. Health Hack (März 2025, Metropolregion Hannover Braunschweig Göttingen Wolfsburg, Braunschweig): MediMate – ein digitaler Behandlungsassistent zum Buchen und optimalen Vorbereiten von Arztterminen. Design-Konzept und Geschäftsmodell.\n\n8. MÜNSTERHACK (September 2025, Digital Hub münsterLAND, Münster): Blindspotter – ein Tool, das das Erleben des städtischen Verkehrs aus allen Perspektiven sichtbar macht und auswertet, um städtische Maßnahmen zu verbessern. Funktionsfähiger Prototyp."
+  },
+  {
+    "id": "strengths",
+    "title": "Stärken & Arbeitsweise",
+    "content": "Ich kann eigenständig Ziele setzen, Pläne entwickeln und diese konsequent umsetzen – das habe ich in meiner Startup-Zeit, meinem selbst organisierten Auslandsaufenthalt in Norwegen und in meiner Arbeit in einem Maker-Verein unter Beweis gestellt. Am meisten gehe ich dennoch in der Teamarbeit auf: Ich schätze die Perspektiven anderer und versuche bei der Einführung neuer Technologien stets, alle Beteiligten frühzeitig einzubinden und auf einen gemeinsamen Nenner zu bringen. Dabei helfen mir drei Kernstärken: eine schnelle Auffassungsgabe, die Fähigkeit komplexe Zusammenhänge und scheinbares Chaos sinnvoll zu strukturieren, sowie die Fähigkeit, diese Zusammenhänge nahezu jedem Publikum verständlich zu erklären."
+  },
+  {
+    "id": "career-goals",
+    "title": "Berufliche Ziele & gesuchte Rolle",
+    "content": "Ich suche eine Festanstellung in einem größeren Unternehmen. Meine Wunschrolle ist die des IT-Architekten oder Inhouse Consultants: als Möglichmacher auftreten, neue Technologien strukturiert evaluieren und in die Anwendung überführen – nicht als Trendsetter, sondern als Brückenbauer zwischen Innovation und Betrieb. Inhaltlich interessieren mich besonders Unternehmen aus dem Energie- und Mobilitätssektor sowie Unternehmen, die innovative Produkte und Systeme entwickeln, um gesellschaftliche Herausforderungen zu lösen – etwa in der Landwirtschaft, im Bauwesen oder im Transport. Mir ist wichtig, mit meiner Arbeit einen möglichst großen, messbaren Impact zu schaffen."
   },
   {
     "id": "contact-01",
