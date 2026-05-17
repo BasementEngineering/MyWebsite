@@ -207,7 +207,7 @@ export default function TransparentArchitectChat() {
             setPhase('streaming');
             assembled += evt.text;
             chunkCount.current++;
-            setTokenBlocks(prev => [...prev, { id: prev.length + 1, text: evt.text! }]);
+            setTokenBlocks(prev => [...prev, { id: prev.length + 1, tokenId: 0, text: evt.text!, group: prev.length, isFirst: false, isLast: false }]);
           }
 
           if (evt.type === 'done') {
