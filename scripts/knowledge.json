@@ -90,6 +90,11 @@
     "content": "Ich entwerfe und bewerte Dateninfrastrukturen mit starkem Fokus auf Datenschutz und Compliance – insbesondere im europäischen Kontext (DSGVO). Sicherheit und Privacy sind für mich Fundament, nicht Nachgedanke. Meine Arbeit im Projekt 'Intelligent Pendeln' hat diesen Schwerpunkt praktisch gefestigt: Dort habe ich Werkzeuge zur datenschutzkonformen Anonymisierung von Mobilitätsdaten entwickelt."
   },
   {
+    "id": "focus-dsgvo-ki",
+    "title": "DSGVO-Konformität bei KI-Projekten",
+    "content": "Bei KI-Projekten stelle ich DSGVO-Konformität durch mehrere konkrete Maßnahmen sicher: Erstens wähle ich Modelle und Infrastruktur datensensitivitätsabhängig – für personenbezogene Daten setze ich auf selbstgehostete Open-Source-Modelle (z. B. Gemma via Ollama), damit keine Daten an externe Anbieter übertragen werden. Zweitens verankere ich Privacy by Design von Anfang an in der Systemarchitektur, nicht als nachträglichen Compliance-Check. Drittens habe ich im Forschungsprojekt 'Intelligent Pendeln' direkt Anonymisierungswerkzeuge für personenbezogene Mobilitätsdaten entwickelt und als Open Source veröffentlicht. Viertens berate ich Unternehmen dabei, ihre KI-Anwendungsfälle anhand der Datensensitivität zu klassifizieren und entsprechende Verarbeitungsgrundlagen (z. B. Einwilligung, berechtigtes Interesse) zu bestimmen."
+  },
+  {
     "id": "languages",
     "title": "Sprachkenntnisse",
     "content": "Ich spreche Deutsch als Muttersprache und Englisch fließend auf C1-Niveau – sowohl schriftlich als auch mündlich, auch auf Konferenzen und in internationalen Teams. Rudimentäre Grundkenntnisse in Russisch (A1, primär schriftlich) runden mein Sprachprofil ab."

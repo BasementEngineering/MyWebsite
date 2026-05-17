@@ -40,7 +40,7 @@ async function searchKnowledge(query: string): Promise<{ context: string; count:
       {
         method:  'POST',
         headers: { 'Content-Type': 'application/json', 'api-key': apiKey },
-        body:    JSON.stringify({ search: query, top: 2, select: 'title,content' }),
+        body:    JSON.stringify({ search: query, top: 3, select: 'title,content' }),
         signal:  AbortSignal.timeout(2000),
       },
     );
