@@ -15,6 +15,7 @@ export const content = {
     links: [
       { label: 'LinkedIn', href: 'https://www.linkedin.com/in/jan-kettler-a4047b282/' },
       { label: 'GitHub', href: 'https://github.com/BasementEngineering' },
+      { label: 'Instructables', href: 'https://www.instructables.com/member/Basement%20Engineering/' },
     ],
   },
   hero: {
