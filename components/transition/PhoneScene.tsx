@@ -13,11 +13,11 @@ import { type MotionValue, useMotionValueEvent } from 'framer-motion';
 // ─── Ideation phases (left side) ─────────────────────────────────────────────
 // tokens/minutes = 0 → counter is hidden for that phase
 const IDEATION_PHASES = [
-  { label: 'Konzeption',                     screenshot: null,                            tokens: 18_000, minutes: 164 },
-  { label: 'Erster Prototyp',                screenshot: '/images/FirstPrototype.jpg',    tokens: 35_782, minutes: 12},
-  { label: 'Live-3D Grafik',                 screenshot: '/images/phone-screenshot.jpg',  tokens: 79_921, minutes:  92 },
-  { label: 'Live-KI-Integration',            screenshot: null,                            tokens: 50_431, minutes:  156},
-  { label: 'Fehlerbehebung & Finalisierung', screenshot: null,                            tokens: 265_723, minutes:   439 },
+  { label: 'Konzeption',                     screenshot: '/images/DevelopmentPhases/Concept.jpg',        tokens: 18_000,  minutes: 164, tools: [] },
+  { label: 'Erster Prototyp',                screenshot: '/images/DevelopmentPhases/FirstPrototype.jpg', tokens: 35_782,  minutes:  12, tools: [] },
+  { label: 'Live-3D Grafik',                 screenshot: '/images/DevelopmentPhases/3D_Graphic.jpg',     tokens: 79_921,  minutes: 102, tools: [] },
+  { label: 'Live-KI-Integration',            screenshot: '/images/DevelopmentPhases/AI_Chat.jpg',        tokens: 50_431,  minutes: 156, tools: [] },
+  { label: 'Fehlerbehebung & Finalisierung', screenshot: '/images/DevelopmentPhases/ErrorFixing.jpg',    tokens: 265_723, minutes: 339, tools: [] },
 ];
 
 // ─── Backend stacks (right side) ─────────────────────────────────────────────
@@ -178,6 +178,34 @@ const lerp      = (a: number, b: number, t: number)   => a + (b - a) * t;
 const easeOut3  = (t: number) => 1 - Math.pow(1 - t, 3);
 const easeInOut = (t: number) => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
 
+// ─── Mobile camera pan ───────────────────────────────────────────────────────
+const CAM_END_MOBILE      = new THREE.Vector3(0, 0.8, 14);
+const MOBILE_BREAKPOINT   = 768;
+const MOBILE_ANIM_DONE_MS = 9500;
+const MOBILE_PAN_MIN      = -4.0;
+const MOBILE_PAN_MAX      =  4.5;
+const MOBILE_PAN_KEYFRAMES = [
+  { t:    0, x:  0.0 },
+  { t: 2000, x: -3.5 },  // show ideation panels
+  { t: 3000, x:  0.0 },
+  { t: 5000, x:  3.0 },  // show backend stacks
+  { t: 8500, x:  3.0 },
+  { t: 9500, x:  0.0 },  // return to center → interactive
+] as const;
+
+function getAutoPanX(elapsed: number): number {
+  const kf = MOBILE_PAN_KEYFRAMES;
+  if (elapsed <= kf[0].t) return kf[0].x;
+  if (elapsed >= kf[kf.length - 1].t) return kf[kf.length - 1].x;
+  for (let i = 1; i < kf.length; i++) {
+    if (elapsed <= kf[i].t) {
+      const seg = (elapsed - kf[i - 1].t) / (kf[i].t - kf[i - 1].t);
+      return lerp(kf[i - 1].x, kf[i].x, easeInOut(seg));
+    }
+  }
+  return kf[kf.length - 1].x;
+}
+
 const getElapsed = (autoStart: number | null): number =>
   autoStart === null ? -1 : performance.now() - autoStart;
 
@@ -201,15 +229,32 @@ function useCountUp(target: number, durationSec: number, active: boolean) {
   return value;
 }
 
-// ─── Camera — scroll-driven intro ────────────────────────────────────────────
-function Camera({ scrollRef }: { scrollRef: React.MutableRefObject<number> }) {
+// ─── Camera — scroll-driven intro + mobile pan ───────────────────────────────
+function Camera({
+  scrollRef, autoPlayRef, isMobileRef, cameraXRef,
+}: {
+  scrollRef:   React.MutableRefObject<number>;
+  autoPlayRef: React.MutableRefObject<number | null>;
+  isMobileRef: React.MutableRefObject<boolean>;
+  cameraXRef:  React.MutableRefObject<number>;
+}) {
   const { camera } = useThree();
   const target = useMemo(() => new THREE.Vector3(), []);
   useFrame(() => {
-    const t = easeInOut(t01(scrollRef.current, INTRO_START, INTRO_END));
-    target.lerpVectors(CAM_START, CAM_END, t);
+    const isMob = isMobileRef.current;
+    const t     = easeInOut(t01(scrollRef.current, INTRO_START, INTRO_END));
+    target.lerpVectors(CAM_START, isMob ? CAM_END_MOBILE : CAM_END, t);
+
+    if (isMob) {
+      const elapsed = getElapsed(autoPlayRef.current);
+      if (elapsed >= 0 && elapsed < MOBILE_ANIM_DONE_MS)
+        target.x = getAutoPanX(elapsed);
+      else if (elapsed >= MOBILE_ANIM_DONE_MS)
+        target.x = cameraXRef.current;
+    }
+
     camera.position.lerp(target, 0.12);
-    camera.lookAt(0, 0, 0);
+    isMob ? camera.lookAt(target.x, 0, 0) : camera.lookAt(0, 0, 0);
   });
   return null;
 }
@@ -280,6 +325,7 @@ function IdeationPanel({
   const screenMatRef = useRef<THREE.MeshBasicMaterial>(null);
   const labelRef     = useRef<HTMLDivElement>(null);
   const counterRef   = useRef<HTMLDivElement>(null);
+  const toolsRef     = useRef<HTMLDivElement>(null);
   const triggered    = useRef(false);
   const [countActive, setCountActive] = useState(false);
 
@@ -310,6 +356,7 @@ function IdeationPanel({
     if (elapsed < 0) {
       if (labelRef.current)   labelRef.current.style.opacity   = '0';
       if (counterRef.current) counterRef.current.style.opacity = '0';
+      if (toolsRef.current)   toolsRef.current.style.opacity   = '0';
       if (triggered.current) {
         triggered.current = false;
         setCountActive(false);
@@ -324,6 +371,7 @@ function IdeationPanel({
     const textOp = String(clamp(t01(t, 0.4, 0.9), 0, 1));
     if (labelRef.current)   labelRef.current.style.opacity   = textOp;
     if (counterRef.current) counterRef.current.style.opacity = textOp;
+    if (toolsRef.current)   toolsRef.current.style.opacity   = textOp;
 
     if (showCounter && !triggered.current && t > 0.7) {
       triggered.current = true;
@@ -368,6 +416,29 @@ function IdeationPanel({
             }}>
               <div style={{ fontSize: 11 }}>{hh}:{mm} h</div>
               <div style={{ fontSize: 11 }}>{tokenCount.toLocaleString('de-DE')} Tokens</div>
+            </div>
+          </Html>
+        </group>
+      )}
+
+      {/* Tools used — badges below counter */}
+      {phase.tools.length > 0 && (
+        <group position={[0, -PANEL_H / 2 - 0.85, 0]}>
+          <Html center transform distanceFactor={5} style={{ pointerEvents: 'none' }}>
+            <div ref={toolsRef} style={{
+              opacity: 0, display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'center',
+              maxWidth: 120,
+            }}>
+              {phase.tools.map(tool => (
+                <span key={tool} style={{
+                  fontFamily: 'var(--font-jetbrains-mono, "JetBrains Mono", monospace)',
+                  fontSize: 9, color: PALETTE.labelMuted,
+                  border: `1px solid ${PALETTE.labelMuted}`,
+                  padding: '1px 5px', borderRadius: 2, whiteSpace: 'nowrap',
+                }}>
+                  {tool}
+                </span>
+              ))}
             </div>
           </Html>
         </group>
@@ -836,10 +907,12 @@ function BackendLabel({ autoPlayRef }: { autoPlayRef: React.MutableRefObject<num
 
 // ─── Scene root ───────────────────────────────────────────────────────────────
 function Scene({
-  scrollRef, autoPlayRef,
+  scrollRef, autoPlayRef, isMobileRef, cameraXRef,
 }: {
   scrollRef:   React.MutableRefObject<number>;
   autoPlayRef: React.MutableRefObject<number | null>;
+  isMobileRef: React.MutableRefObject<boolean>;
+  cameraXRef:  React.MutableRefObject<number>;
 }) {
   return (
     <>
@@ -849,7 +922,7 @@ function Scene({
       <directionalLight position={[0, -3, 2]}  intensity={0.15} />
 
       {/* Phone (center) */}
-      <Camera scrollRef={scrollRef} />
+      <Camera scrollRef={scrollRef} autoPlayRef={autoPlayRef} isMobileRef={isMobileRef} cameraXRef={cameraXRef} />
       <Phone  scrollRef={scrollRef} />
 
       {/* Ideation (left) */}
@@ -886,26 +959,105 @@ export default function PhoneScene({
   const scrollRef   = useRef(0);
   const autoPlayRef = useRef<number | null>(null);
 
+  // ── Mobile state ──────────────────────────────────────────────────────────
+  const isMobileRef    = useRef(typeof window !== 'undefined' && window.innerWidth < MOBILE_BREAKPOINT);
+  const cameraXRef     = useRef(0);
+  const animDoneRef    = useRef(false);
+  const [showArrows, setShowArrows] = useState(false);
+  const touchLastXRef  = useRef<number | null>(null);
+
   useMotionValueEvent(scrollYProgress, 'change', (v) => {
     scrollRef.current = v;
     if (v >= INTRO_END && autoPlayRef.current === null) {
       autoPlayRef.current = performance.now();
+      if (isMobileRef.current) {
+        cameraXRef.current  = 0;
+        animDoneRef.current = false;
+        setShowArrows(false);
+      }
     } else if (v < INTRO_END) {
       autoPlayRef.current = null;
+      if (isMobileRef.current) {
+        animDoneRef.current = false;
+        setShowArrows(false);
+      }
     }
   });
 
+  // RAF loop that flips showArrows once the animation timeline finishes (mobile only)
+  useEffect(() => {
+    if (!isMobileRef.current) return;
+    let raf: number;
+    const check = () => {
+      if (getElapsed(autoPlayRef.current) >= MOBILE_ANIM_DONE_MS) {
+        animDoneRef.current = true;
+        setShowArrows(true);
+        return;
+      }
+      raf = requestAnimationFrame(check);
+    };
+    raf = requestAnimationFrame(check);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  // ── Touch drag ────────────────────────────────────────────────────────────
+  const PAN_SENSITIVITY = 0.008;
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (!isMobileRef.current || !animDoneRef.current) return;
+    touchLastXRef.current = e.touches[0].clientX;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isMobileRef.current || !animDoneRef.current || touchLastXRef.current === null) return;
+    const dx = e.touches[0].clientX - touchLastXRef.current;
+    touchLastXRef.current = e.touches[0].clientX;
+    cameraXRef.current = clamp(cameraXRef.current - dx * PAN_SENSITIVITY, MOBILE_PAN_MIN, MOBILE_PAN_MAX);
+  };
+
+  const handleTouchEnd = () => { touchLastXRef.current = null; };
+
+  // ── Arrow button handlers ─────────────────────────────────────────────────
+  const ARROW_STEP = 2.0;
+  const panLeft  = () => { cameraXRef.current = clamp(cameraXRef.current - ARROW_STEP, MOBILE_PAN_MIN, MOBILE_PAN_MAX); };
+  const panRight = () => { cameraXRef.current = clamp(cameraXRef.current + ARROW_STEP, MOBILE_PAN_MIN, MOBILE_PAN_MAX); };
+
+  const arrowStyle: React.CSSProperties = {
+    position: 'absolute', top: '50%', transform: 'translateY(-50%)',
+    zIndex: 20, width: 44, height: 44, borderRadius: '50%',
+    background: 'rgba(255,255,255,0.7)', border: '1px solid rgba(0,0,0,0.15)',
+    backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center',
+    justifyContent: 'center', fontSize: 22, cursor: 'pointer',
+    WebkitTapHighlightColor: 'transparent',
+  };
+
   return (
-    <div className="relative w-full h-full">
+    <div
+      className="relative w-full h-full"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
       <Canvas
         gl={{ alpha: true, antialias: true }}
         camera={{ position: [0, 0, 2.2], fov: 45 }}
         dpr={[1, 2]}
         style={{ background: 'transparent' }}
       >
-        <Scene scrollRef={scrollRef} autoPlayRef={autoPlayRef} />
+        <Scene
+          scrollRef={scrollRef}
+          autoPlayRef={autoPlayRef}
+          isMobileRef={isMobileRef}
+          cameraXRef={cameraXRef}
+        />
       </Canvas>
 
+      {showArrows && isMobileRef.current && (
+        <>
+          <button onClick={panLeft}  aria-label="Pan left"  style={{ ...arrowStyle, left:  12 }}>‹</button>
+          <button onClick={panRight} aria-label="Pan right" style={{ ...arrowStyle, right: 12 }}>›</button>
+        </>
+      )}
     </div>
   );
 }
