@@ -75,7 +75,7 @@ const MAX_INPUT_TOKENS = 200;
 const SUGGESTED_PROMPTS = [
   'Wie integrierst du KI in bestehende Unternehmensinfrastruktur?',
   'Wie stellst du DSGVO-Konformität bei KI-Projekten sicher?',
-  'Welche KI-Projekte hast du bisher federführend umgesetzt?',
+  'Was suchst du gerade beruflich?',
 ];
 
 // ─── Design tokens ────────────────────────────────────────────────────────────

@@ -1,0 +1,18 @@
+Datum; Veranstaltung; Ort; Platzierung
+27.06.2024; Science Slam der Hochschule Osnabrück; Büdchen am Westerberg, Osnabrück; 1
+17.03.2025; Nationale Konferenz IT-Sicherheitsforschung 2025; Berlin; 1
+29.04.2025; Science Slam; Lagerhalle, Osnabrück ; -
+12.07.2025; Science Slam unterm Apfelbaum; Düsseldorf; 2
+19.06.2025; Best of Science Slam; Leiszhalle; Hamburg; -
+22.10.2025; Deutsche Science Slam Meisterschaft Vorentscheid Nord; Hamburg; 3
+25.10.2025; Science Slam; Lübeck; 1
+26.10.2025; Science Slam; Space Hub, Bremen; 1
+20.02.2026; Science Slam; Nordhorn; 1
+16.03.2026; Science Slam der Osnabrücker Hochschule; Alando, Osnabrück; 2
+25.04.2026; Best of Science Slam; Theater Osnabrück; -
+28.04.2026; Best of Science Slam; Theater Münster; -
+05.05.2026; Science Slam; GOP Bremen; 1
+09.06.2026; Aging with Tech Festival; Körberstiftung, Hamburg; -
+26.06.2026; Niedersächsisches Science Slam Finale; Hannover; -
+
+

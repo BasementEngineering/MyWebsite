@@ -29,7 +29,7 @@ export const content = {
     pillars: [
       {
         label: 'System Ingenieur',
-        body: 'Ein System ist erst dann gut, wenn es die Realität überlebt. Ich verbinde Elektro- und Informationstechnik zu robusten Architekturen. Ob 3D-Design, Hardware-Prototyping oder komplexe Software-Systeme: Ich denke in stabilen Strukturen statt in kurzlebigen Hypes.',
+        body: 'Ich habe einen klassichen Ingenieurs-Hintergrund in der Elektrotechnik und Informatik. Dadurch verfüge ich über ein umfangreiches Fachwissen von Hardware-Prototyping zu komplexe Software-Systeme. Ich denke in stabilen Strukturen statt in kurzlebigen Hypes.',
         images: [
           '/images/Engineer/Hackathon.jpg',
           '/images/Engineer/MINT_Schiffbau13.JPG',
@@ -37,7 +37,7 @@ export const content = {
       },
       {
         label: 'Pragmatischer KI Experte',
-        body: 'Ich bringe die neuesten Sprach- und Machine-Learning-Modelle aus der Theorie in die Produktion. Mein Fokus liegt auf der praktischen Implementierung: Wie machen wir KI für Teams nutzbar, sicher und ökonomisch sinnvoll? Ich evaluiere den State-of-the-Art und baue daraus Werkzeuge mit Substanz.',
+        body: 'Seit dem Erscheinen der ersten großen LLMs experimentiere ich mit verschiedenen Ansätzen KI einzusetzen. Mein Fokus liegt auf der praktischen Implementierung: Wie machen wir KI für Teams nutzbar, sicher und ökonomisch sinnvoll? Ich evaluiere den State-of-the-Art und baue daraus Werkzeuge mit Substanz.',
         images: [
           '/images/Ai Expert/SystemDrawing.jpg',
           '/images/Ai Expert/MailSystem.jpg',
@@ -46,13 +46,36 @@ export const content = {
       },
       {
         label: 'Kommunikator',
-        body: 'Wahre Expertise beweist sich darin, Komplexität verständlich zu machen. Als erfahrener Science Slammer und Speaker übersetze ich Deep-Tech in klare Visionen – für Entscheider, Fachabteilungen oder das große Publikum.',
+        body: 'Komplexität verständlich zu machen ist ein wichtiger Bestandteil bei der Entwicklung und Einführung neuer Lösungen. Als erfahrener Science Slammer und Startup Pitcher, übersetze ich Deep-Tech in klare Visionen – für Entscheider, Fachabteilungen oder das große Publikum.',
         images: [
           '/images/Speaker/_DSC2142.jpg',
           '/images/Speaker/PitchSCH.jpg',
           '/images/Speaker/PitchHackathon.jpg',
         ],
-        cta: { label: 'Mich buchen', href: 'mailto:contact@jankettler.info' },
+        cta: { label: 'Mich buchen', href: '/speaker' },
+      },
+    ],
+  },
+  speakerOfferings: {
+    intro: 'Was ich anbiete',
+    pillars: [
+      {
+        label: 'Science Slam',
+        body: '10 Minuten, ein Thema aus der Forschung und vielfältiges Publikum. Ich rede unter dem Thema "Anonymisierung und Datenschutz in der Verkehrsforschung" über die Herausforderungen und Lösungen bei der Nutzung von Mobilitätsdaten – mit Humor, anschaulichen Beispielen und einem klaren Blick auf die Realität.',
+        images: [],
+        tags: ['Talk'],
+      },
+      {
+        label: 'Mobilitätsdaten für smarte Städte',
+        body: 'Bessere Städte brauchen bessere Daten, denn damit lassen sich Mehrwerte schaffen. Diese Erfahrung habe ich sowohl in meiner Arbeit mit Kunden für mein Startup TransitSense als auch in meiner Forschungstätigkeit gemacht. Ich würde mich freuen mehr Städten, Kommunen und Verkehrsbetrieben zu zeigen, wie sie Daten gewinnen und effektiv nutzen können und das bei Wahrung der DSGVO.',
+        images: [],
+        tags: ['Talk', 'Workshop'],
+      },
+      {
+        label: 'KI in der Praxis',
+        body: 'Was kann KI heute wirklich leisten, und wo hört es auf? Wie blickt man an Hype vorbei und implementiert nachhaltige Lösungen? Und was sind dabei typische Hindernisse? Ich gebe einen ehrlichen Überblick und zeige konkrete Ansätze für Ihre Problemstellungen.',
+        images: [],
+        tags: ['Talk', 'Workshop'],
       },
     ],
   },

@@ -1,6 +1,11 @@
 import { NextRequest } from 'next/server';
+import knowledgeBase from '@/scripts/knowledge.json';
 
 export const maxDuration = 60;
+
+const FULL_CONTEXT = (knowledgeBase as { title: string; content: string }[])
+  .map(d => `### ${d.title}\n${d.content}`)
+  .join('\n\n');
 
 const MODEL          = process.env.MISTRAL_MODEL ?? 'mistral-small-latest';
 const FALLBACK_MODEL = process.env.MISTRAL_FALLBACK_MODEL ?? 'open-mistral-7b';
@@ -85,16 +90,17 @@ export async function POST(req: NextRequest) {
       try {
         // ── Step 1: RAG ────────────────────────────────────────────────────
         emit({ type: 'status', step: 'rag_searching' });
-        const { context, count } = await searchKnowledge(lastUser);
+        const { context: ragContext, count } = await searchKnowledge(lastUser);
         emit({ type: 'status', step: 'rag_done', found: count });
 
-        const messagesWithContext = context
-          ? messages.map((m, i) =>
-              i === messages.length - 1 && m.role === 'user'
-                ? { ...m, content: `[KONTEXT – verifizierte Fakten, NUR diese verwenden]\n${context}\n[/KONTEXT]\n\nFrage: ${m.content}` }
-                : m
-            )
-          : messages;
+        // Fall back to full knowledge base when Azure Search returns nothing
+        const context = ragContext || FULL_CONTEXT;
+
+        const messagesWithContext = messages.map((m, i) =>
+          i === messages.length - 1 && m.role === 'user'
+            ? { ...m, content: `[KONTEXT – verifizierte Fakten, NUR diese verwenden]\n${context}\n[/KONTEXT]\n\nFrage: ${m.content}` }
+            : m
+        );
 
         // ── Step 2: Inference via raw fetch (avoids SDK injecting stream_options) ──
         emit({ type: 'status', step: 'generating' });
