@@ -23,6 +23,15 @@ export default function Hero() {
         />
       </motion.div>
 
+      <motion.p
+        className="font-sans text-xs tracking-[0.35em] uppercase text-gray-400 mb-3"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.9, ease: 'easeOut' }}
+      >
+        {content.hero.eyebrow}
+      </motion.p>
+
       <motion.a
         href="https://www.linkedin.com/in/jan-kettler-a4047b282/"
         target="_blank"
@@ -34,15 +43,6 @@ export default function Hero() {
       >
         LinkedIn ↗
       </motion.a>
-
-      <motion.p
-        className="font-sans text-xs tracking-[0.35em] uppercase text-gray-400 mb-8"
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.9, ease: 'easeOut' }}
-      >
-        {content.hero.eyebrow}
-      </motion.p>
 
       <h1 className="font-sans font-light text-gray-900 leading-[1.05]">
         {content.hero.headline.map((line, i) => (

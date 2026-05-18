@@ -31,7 +31,6 @@ export const content = {
         label: 'System Ingenieur',
         body: 'Ein System ist erst dann gut, wenn es die Realität überlebt. Ich verbinde Elektro- und Informationstechnik zu robusten Architekturen. Ob 3D-Design, Hardware-Prototyping oder komplexe Software-Systeme: Ich denke in stabilen Strukturen statt in kurzlebigen Hypes.',
         images: [
-          '/images/Engineer/P1010869.jpg',
           '/images/Engineer/Hackathon.jpg',
           '/images/Engineer/MINT_Schiffbau13.JPG',
         ],
@@ -39,7 +38,11 @@ export const content = {
       {
         label: 'Pragmatischer KI Experte',
         body: 'Ich bringe die neuesten Sprach- und Machine-Learning-Modelle aus der Theorie in die Produktion. Mein Fokus liegt auf der praktischen Implementierung: Wie machen wir KI für Teams nutzbar, sicher und ökonomisch sinnvoll? Ich evaluiere den State-of-the-Art und baue daraus Werkzeuge mit Substanz.',
-        images: [],
+        images: [
+          '/images/Ai Expert/SystemDrawing.jpg',
+          '/images/Ai Expert/MailSystem.jpg',
+          '/images/Engineer/P1010869.jpg'
+        ],
       },
       {
         label: 'Kommunikator',

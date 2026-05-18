@@ -18,10 +18,16 @@ function PillarCard({
 
   useEffect(() => {
     if (pillar.images.length < 2) return;
-    const id = setInterval(() => {
-      setActiveImg((prev) => (prev + 1) % pillar.images.length);
-    }, 3500);
-    return () => clearInterval(id);
+    let intervalId: ReturnType<typeof setInterval>;
+    const timeoutId = setTimeout(() => {
+      intervalId = setInterval(() => {
+        setActiveImg((prev) => (prev + 1) % pillar.images.length);
+      }, 5000);
+    }, Math.random() * 5000);
+    return () => {
+      clearTimeout(timeoutId);
+      clearInterval(intervalId);
+    };
   }, [pillar.images.length]);
 
   return (
