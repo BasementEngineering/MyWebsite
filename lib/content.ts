@@ -41,7 +41,7 @@ export const content = {
         images: [
           '/images/Ai Expert/SystemDrawing.jpg',
           '/images/Ai Expert/MailSystem.jpg',
-          '/images/Engineer/P1010869.jpg'
+          '/images/Ai Expert/P1010869.jpg'
         ],
       },
       {
